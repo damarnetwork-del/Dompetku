@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ArrowLeftIcon from './icons/ArrowLeftIcon';
 import DownloadIcon from './icons/DownloadIcon';
 import WhatsappIcon from './icons/WhatsappIcon';
@@ -15,6 +15,7 @@ interface CompanyInfo {
 interface InvoicePageProps {
   onBack: () => void;
   companyInfo: CompanyInfo;
+  recipientName?: string;
 }
 
 interface InvoiceItem {
@@ -24,17 +25,27 @@ interface InvoiceItem {
     price: number;
 }
 
-const InvoicePage: React.FC<InvoicePageProps> = ({ onBack, companyInfo }) => {
+const InvoicePage: React.FC<InvoicePageProps> = ({ onBack, companyInfo, recipientName }) => {
     const [recipient, setRecipient] = useState('');
     const [recipientPhone, setRecipientPhone] = useState('');
     const [items, setItems] = useState<InvoiceItem[]>([
         { id: 1, description: '', qty: 1, price: 0 }
     ]);
     
+    useEffect(() => {
+        if (recipientName) {
+            setRecipient(recipientName);
+        }
+    }, [recipientName]);
+
     const handleItemChange = (index: number, field: keyof Omit<InvoiceItem, 'id'>, value: string | number) => {
         const newItems = [...items];
         const numericValue = typeof value === 'string' ? parseFloat(value) : value;
-        (newItems[index] as any)[field] = isNaN(numericValue) ? 0 : numericValue;
+        if (field === 'description') {
+             (newItems[index] as any)[field] = value;
+        } else {
+            (newItems[index] as any)[field] = isNaN(numericValue) ? 0 : numericValue;
+        }
         setItems(newItems);
     };
     
@@ -244,7 +255,7 @@ Hormat kami,
                             <div key={item.id} className="grid grid-cols-12 gap-4 items-center bg-white/5 p-3 rounded-lg">
                                 <div className="col-span-12 md:col-span-6">
                                     <label className="block text-xs font-medium text-gray-400 mb-1 md:hidden">Deskripsi</label>
-                                    <input type="text" value={item.description} onChange={e => handleItemChange(index, 'description', e.target.value)} placeholder="Deskripsi item/layanan" className="w-full input-style"/>
+                                    <textarea value={item.description} onChange={e => handleItemChange(index, 'description', e.target.value)} placeholder="Deskripsi item/layanan" className="w-full input-style" rows={2}></textarea>
                                 </div>
                                 <div className="col-span-4 md:col-span-2">
                                      <label className="block text-xs font-medium text-gray-400 mb-1 md:hidden">Qty</label>
@@ -284,11 +295,15 @@ Hormat kami,
                     padding: 0.5rem 0.75rem;
                     color: white;
                     width: 100%;
+                    transition: border-color 0.2s, box-shadow 0.2s;
                 }
                 .input-style:focus {
                     outline: none;
                     box-shadow: 0 0 0 2px #60a5fa;
                     border-color: #60a5fa;
+                }
+                textarea.input-style {
+                    min-height: 42px; /* Match height of other inputs */
                 }
                 input[type=number]::-webkit-inner-spin-button, 
                 input[type=number]::-webkit-outer-spin-button { 
