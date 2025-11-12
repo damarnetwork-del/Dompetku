@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import SirekapPage from './SirekapPage';
 import LaporanBulananPage from './LaporanBulananPage';
+import InvoicePage from './InvoicePage'; // Import the new InvoicePage
 import * as Recharts from 'recharts';
 import SettingsIcon from './icons/SettingsIcon';
 
@@ -122,6 +123,7 @@ const initialFinanceHistory: FinanceEntry[] = [
 const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username }) => {
   const [showSirekap, setShowSirekap] = useState(false);
   const [showLaporan, setShowLaporan] = useState(false);
+  const [showInvoice, setShowInvoice] = useState(false); // State for invoice page
   const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
   const [financeHistory, setFinanceHistory] = useState<FinanceEntry[]>(initialFinanceHistory);
   const [profitSharingData, setProfitSharingData] = useState<ProfitShare[]>([]);
@@ -233,22 +235,33 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username }) => 
     e.preventDefault();
     setShowSirekap(true);
     setShowLaporan(false);
+    setShowInvoice(false);
   };
 
   const handleLaporanClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     setShowLaporan(true);
     setShowSirekap(false);
+    setShowInvoice(false);
+  };
+
+  const handleInvoiceClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    setShowInvoice(true);
+    setShowLaporan(false);
+    setShowSirekap(false);
   };
 
   const handleBack = () => {
     setShowSirekap(false);
     setShowLaporan(false);
+    setShowInvoice(false);
   };
   
   const getPageTitle = () => {
     if (showSirekap) return 'Sirekap';
     if (showLaporan) return 'Laporan Bulanan';
+    if (showInvoice) return 'Invoice';
     return 'Dasbor';
   };
 
@@ -404,6 +417,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username }) => 
             setFinanceHistory={setFinanceHistory}
             setProfitSharingData={setProfitSharingData}
           />
+        ) : showInvoice ? (
+          <InvoicePage
+            onBack={handleBack}
+            companyInfo={companyInfo}
+          />
         ) : (
           <>
             {/* Menu Section */}
@@ -414,7 +432,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username }) => 
                     <a 
                       href="#" 
                       onClick={handleSirekapClick}
-                      className="text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 border-b-2 border-sky-400">
+                      className="text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 border-b-2 border-transparent hover:border-sky-400">
                       Sirekap
                     </a>
                   </li>
@@ -424,6 +442,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username }) => 
                       onClick={handleLaporanClick}
                       className="text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 border-b-2 border-transparent hover:border-sky-400">
                       Laporan Bulanan
+                    </a>
+                  </li>
+                  <li>
+                    <a 
+                      href="#" 
+                      onClick={handleInvoiceClick}
+                      className="text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 border-b-2 border-transparent hover:border-sky-400">
+                      Invoice
                     </a>
                   </li>
                 </ul>

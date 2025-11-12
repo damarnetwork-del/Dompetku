@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import ArrowLeftIcon from './icons/ArrowLeftIcon';
+import WhatsappIcon from './icons/WhatsappIcon';
 
 // Declare Swal to inform TypeScript about the global variable from the CDN script
 declare const Swal: any;
@@ -296,6 +297,38 @@ const SirekapPage: React.FC<SirekapPageProps> = ({ onBack, customers, setCustome
       }
     })
   };
+    
+  const handleSendWhatsApp = (customer: Customer) => {
+    let formattedPhone = customer.noHp.trim();
+    if (formattedPhone.startsWith('0')) {
+        formattedPhone = '62' + formattedPhone.substring(1);
+    }
+    formattedPhone = formattedPhone.replace(/\D/g, '');
+
+    const totalTagihan = Number(customer.harga) + customer.tunggakan;
+
+    const message = encodeURIComponent(
+`*Pemberitahuan Tagihan Internet*
+
+Yth. Bpk/Ibu ${customer.nama},
+
+Kami ingin mengingatkan mengenai tagihan layanan internet Anda untuk periode ini.
+
+Rincian Tagihan:
+- Jenis Langganan: ${customer.jenisLangganan}
+- Total Tagihan: *Rp ${totalTagihan.toLocaleString('id-ID')}*
+
+Mohon untuk segera melakukan pembayaran agar layanan Anda tetap berjalan lancar. Pembayaran dapat dilakukan melalui transfer atau tunai.
+
+Terima kasih atas perhatian dan kerjasamanya.
+
+Hormat kami,
+Sidompet Inc.`
+    );
+
+    const whatsappUrl = `https://wa.me/${formattedPhone}?text=${message}`;
+    window.open(whatsappUrl, '_blank');
+  };
 
   const filteredCustomers = customers.filter(customer => {
     const matchesSearchTerm = customer.nama.toLowerCase().includes(searchTerm.toLowerCase());
@@ -374,6 +407,14 @@ const SirekapPage: React.FC<SirekapPageProps> = ({ onBack, customers, setCustome
                         className="font-medium text-green-400 hover:text-green-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors text-xs py-1 px-2 rounded bg-green-500/10 hover:bg-green-500/20 disabled:bg-gray-500/10"
                     >
                         Bayar
+                    </button>
+                    <button 
+                        onClick={() => handleSendWhatsApp(customer)} 
+                        disabled={customer.status === 'Lunas'}
+                        className="font-medium text-teal-400 hover:text-teal-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors p-1.5 rounded bg-teal-500/10 hover:bg-teal-500/20 disabled:bg-gray-500/10"
+                        title="Kirim Notifikasi Tagihan WhatsApp"
+                    >
+                        <WhatsappIcon className="w-4 h-4" />
                     </button>
                     <button 
                         onClick={() => handleStartEditCustomer(customer)} 
