@@ -76,41 +76,55 @@ const SirekapPage: React.FC<SirekapPageProps> = ({ onBack, customers, setCustome
   const handleCustomerFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (editingCustomer) {
-        const updatedCustomers = customers.map(c => 
-            c.id === editingCustomer.id 
-            ? { ...c, nama, noHp, jenisLangganan, alamat, harga: harga || '0' } 
-            : c
-        );
-        setCustomers(updatedCustomers);
-        Swal.fire({
-          title: 'Berhasil!',
-          text: 'Data pelanggan berhasil diperbarui.',
-          icon: 'success',
-          confirmButtonColor: '#3085d6',
-        });
+      Swal.fire({
+        title: 'Perbarui data pelanggan ini?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Ya, perbarui',
+        cancelButtonText: 'Batal',
+      }).then((result: any) => {
+        if (result.isConfirmed) {
+          const updatedCustomers = customers.map(c =>
+            c.id === editingCustomer.id
+              ? { ...c, nama, noHp, jenisLangganan, alamat, harga: harga || '0' }
+              : c
+          );
+          setCustomers(updatedCustomers);
+          Swal.fire({
+            title: 'Berhasil!',
+            text: 'Data pelanggan berhasil diperbarui.',
+            icon: 'success',
+            confirmButtonColor: '#3085d6',
+          });
+          resetCustomerForm();
+          setActiveMenu('daftar');
+          setIsListVisible(true);
+        }
+      });
     } else {
-        const newCustomer: Customer = {
-          id: Date.now(),
-          nama,
-          noHp,
-          jenisLangganan,
-          alamat,
-          harga: harga || '0',
-          status: 'Belum Lunas',
-          tunggakan: 0,
-        };
-        setCustomers(prevCustomers => [...prevCustomers, newCustomer]);
-        Swal.fire({
-          title: 'Berhasil!',
-          text: 'Pelanggan baru berhasil ditambahkan.',
-          icon: 'success',
-          confirmButtonColor: '#3085d6',
-        });
+      const newCustomer: Customer = {
+        id: Date.now(),
+        nama,
+        noHp,
+        jenisLangganan,
+        alamat,
+        harga: harga || '0',
+        status: 'Belum Lunas',
+        tunggakan: 0,
+      };
+      setCustomers(prevCustomers => [...prevCustomers, newCustomer]);
+      Swal.fire({
+        title: 'Berhasil!',
+        text: 'Pelanggan baru berhasil ditambahkan.',
+        icon: 'success',
+        confirmButtonColor: '#3085d6',
+      });
+      resetCustomerForm();
+      setActiveMenu('daftar');
+      setIsListVisible(true);
     }
-    
-    resetCustomerForm();
-    setActiveMenu('daftar');
-    setIsListVisible(true);
   };
   
   const resetFinanceForm = () => {

@@ -2,6 +2,10 @@ import React, { useState } from 'react';
 import SirekapPage from './SirekapPage';
 import LaporanBulananPage from './LaporanBulananPage';
 import * as Recharts from 'recharts';
+import SettingsIcon from './icons/SettingsIcon';
+
+// Declare Swal to inform TypeScript about the global variable from the CDN script
+declare const Swal: any;
 
 // Destructure components from the Recharts namespace
 const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
@@ -32,6 +36,19 @@ interface FinanceEntry {
   metode: string;
   nominal: number;
 }
+
+interface CompanyInfo {
+    name: string;
+    address: string;
+    phone: string;
+    logo: string | null;
+}
+
+export interface ProfitShare {
+  nama: string;
+  jumlah: number;
+}
+
 
 // Initial data moved from SirekapPage
 const initialCustomers: Customer[] = [
@@ -107,7 +124,110 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username }) => 
   const [showLaporan, setShowLaporan] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
   const [financeHistory, setFinanceHistory] = useState<FinanceEntry[]>(initialFinanceHistory);
+  const [profitSharingData, setProfitSharingData] = useState<ProfitShare[]>([]);
+  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
+    name: 'Sidompet Inc.',
+    address: 'Jl. Internet Cepat No. 42, Jakarta',
+    phone: '021-555-0123',
+    logo: null,
+  });
 
+  const handleSettingsClick = () => {
+    Swal.fire({
+      title: 'Pengaturan Perusahaan',
+      html: `
+        <div class="text-left space-y-4 p-4 text-gray-300">
+          <div>
+            <label for="swal-company-name" class="block text-sm font-medium mb-1">Nama Perusahaan</label>
+            <input id="swal-company-name" class="swal2-input w-full !bg-gray-700 !border-gray-600 !text-white" value="${companyInfo.name}" placeholder="Nama Perusahaan Anda">
+          </div>
+          <div>
+            <label for="swal-company-address" class="block text-sm font-medium mb-1">Alamat</label>
+            <textarea id="swal-company-address" class="swal2-textarea w-full !bg-gray-700 !border-gray-600 !text-white" placeholder="Alamat Perusahaan">${companyInfo.address}</textarea>
+          </div>
+          <div>
+            <label for="swal-company-phone" class="block text-sm font-medium mb-1">No. Telepon</label>
+            <input id="swal-company-phone" type="tel" class="swal2-input w-full !bg-gray-700 !border-gray-600 !text-white" value="${companyInfo.phone}" placeholder="Nomor Telepon">
+          </div>
+          <div>
+            <label for="swal-company-logo" class="block text-sm font-medium mb-1">Logo Perusahaan</label>
+            <div class="flex items-center gap-4">
+              <img id="swal-logo-preview" src="${companyInfo.logo || 'https://via.placeholder.com/150/1f2937/FFFFFF?text=Logo'}" alt="Logo Preview" class="h-20 w-20 object-contain rounded-md bg-gray-700"/>
+              <input id="swal-company-logo" type="file" accept="image/*" class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-500/20 file:text-blue-300 hover:file:bg-blue-600/30 cursor-pointer">
+            </div>
+          </div>
+        </div>
+      `,
+      width: '48rem',
+      customClass: {
+          popup: '!bg-gray-800 !text-white !rounded-lg',
+          title: '!text-white',
+          htmlContainer: '!text-white',
+          confirmButton: '!bg-blue-600 hover:!bg-blue-700',
+          cancelButton: '!bg-gray-600 hover:!bg-gray-700',
+      },
+      showCancelButton: true,
+      confirmButtonText: 'Simpan',
+      cancelButtonText: 'Batal',
+      didOpen: () => {
+        const logoInput = document.getElementById('swal-company-logo') as HTMLInputElement;
+        const logoPreview = document.getElementById('swal-logo-preview') as HTMLImageElement;
+        logoInput.onchange = () => {
+          const file = logoInput.files?.[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              logoPreview.src = e.target?.result as string;
+            };
+            reader.readAsDataURL(file);
+          }
+        };
+      },
+      preConfirm: () => {
+        const name = (document.getElementById('swal-company-name') as HTMLInputElement).value;
+        const address = (document.getElementById('swal-company-address') as HTMLTextAreaElement).value;
+        const phone = (document.getElementById('swal-company-phone') as HTMLInputElement).value;
+        const logoInput = document.getElementById('swal-company-logo') as HTMLInputElement;
+        const logoFile = logoInput.files?.[0];
+
+        return new Promise((resolve) => {
+          if (logoFile) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              resolve({
+                name,
+                address,
+                phone,
+                logo: e.target?.result as string
+              });
+            };
+            reader.readAsDataURL(logoFile);
+          } else {
+            resolve({
+              name,
+              address,
+              phone,
+              logo: companyInfo.logo // Keep old logo if no new one is selected
+            });
+          }
+        });
+      }
+    }).then((result) => {
+      if (result.isConfirmed && result.value) {
+        setCompanyInfo(result.value as CompanyInfo);
+        Swal.fire({
+            title: 'Berhasil!',
+            text: 'Pengaturan perusahaan telah diperbarui.',
+            icon: 'success',
+            customClass: {
+              popup: '!bg-gray-800 !text-white !rounded-lg',
+              title: '!text-white',
+              confirmButton: '!bg-blue-600 hover:!bg-blue-700',
+            }
+        });
+      }
+    });
+  };
 
   const handleSirekapClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
@@ -245,13 +365,26 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username }) => 
         
         {/* Header Section */}
         <header className="flex justify-between items-start mb-8">
-          <h1 className="text-4xl font-bold tracking-wider">{getPageTitle()}</h1>
-          <button
-            onClick={onLogout}
-            className="py-2 px-5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-transform transform hover:scale-105"
-          >
-            Keluar
-          </button>
+          <div className="flex items-center gap-4">
+            {companyInfo.logo && <img src={companyInfo.logo} alt="Company Logo" className="h-12 w-12 object-contain" />}
+            <h1 className="text-4xl font-bold tracking-wider">{getPageTitle()}</h1>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <button
+              onClick={onLogout}
+              className="py-2 px-5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-transform transform hover:scale-105"
+            >
+              Keluar
+            </button>
+            <button
+              onClick={handleSettingsClick}
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              aria-label="Pengaturan"
+              title="Pengaturan"
+            >
+              <SettingsIcon className="w-6 h-6 text-white"/>
+            </button>
+          </div>
         </header>
 
         {showSirekap ? (
@@ -266,6 +399,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username }) => 
           <LaporanBulananPage 
             onBack={handleBack} 
             financeHistory={financeHistory}
+            companyInfo={companyInfo}
+            profitSharingData={profitSharingData}
+            setFinanceHistory={setFinanceHistory}
+            setProfitSharingData={setProfitSharingData}
           />
         ) : (
           <>
