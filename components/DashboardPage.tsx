@@ -43,6 +43,8 @@ interface CompanyInfo {
     address: string;
     phone: string;
     logo: string | null;
+    waGatewayUrl: string;
+    waGatewayToken: string;
 }
 
 export interface ProfitShare {
@@ -132,6 +134,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username }) => 
     address: 'Jl. Internet Cepat No. 42, Jakarta',
     phone: '021-555-0123',
     logo: null,
+    waGatewayUrl: '',
+    waGatewayToken: '',
   });
 
   const handleSettingsClick = () => {
@@ -150,6 +154,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username }) => 
           <div>
             <label for="swal-company-phone" class="block text-sm font-medium mb-1">No. Telepon</label>
             <input id="swal-company-phone" type="tel" class="swal2-input w-full !bg-gray-700 !border-gray-600 !text-white" value="${companyInfo.phone}" placeholder="Nomor Telepon">
+          </div>
+          <div>
+            <label for="swal-wa-url" class="block text-sm font-medium mb-1">URL Gateway WhatsApp</label>
+            <input id="swal-wa-url" type="url" class="swal2-input w-full !bg-gray-700 !border-gray-600 !text-white" value="${companyInfo.waGatewayUrl || ''}" placeholder="cth: https://api.wa-gateway.com/send">
+          </div>
+          <div>
+            <label for="swal-wa-token" class="block text-sm font-medium mb-1">Token API Gateway</label>
+            <input id="swal-wa-token" type="text" class="swal2-input w-full !bg-gray-700 !border-gray-600 !text-white" value="${companyInfo.waGatewayToken || ''}" placeholder="Token atau Kunci API Anda">
           </div>
           <div>
             <label for="swal-company-logo" class="block text-sm font-medium mb-1">Logo Perusahaan</label>
@@ -189,6 +201,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username }) => 
         const name = (document.getElementById('swal-company-name') as HTMLInputElement).value;
         const address = (document.getElementById('swal-company-address') as HTMLTextAreaElement).value;
         const phone = (document.getElementById('swal-company-phone') as HTMLInputElement).value;
+        const waGatewayUrl = (document.getElementById('swal-wa-url') as HTMLInputElement).value;
+        const waGatewayToken = (document.getElementById('swal-wa-token') as HTMLInputElement).value;
         const logoInput = document.getElementById('swal-company-logo') as HTMLInputElement;
         const logoFile = logoInput.files?.[0];
 
@@ -200,6 +214,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username }) => 
                 name,
                 address,
                 phone,
+                waGatewayUrl,
+                waGatewayToken,
                 logo: e.target?.result as string
               });
             };
@@ -209,6 +225,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username }) => 
               name,
               address,
               phone,
+              waGatewayUrl,
+              waGatewayToken,
               logo: companyInfo.logo // Keep old logo if no new one is selected
             });
           }
