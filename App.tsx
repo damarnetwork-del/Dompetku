@@ -1,10 +1,21 @@
 
 import React, { useState } from 'react';
 import LoginPage from './components/LoginPage';
-import DashboardPage from './components/DashboardPage';
+import DashboardPage, { CompanyInfo } from './components/DashboardPage';
 
 function App() {
   const [loggedInUser, setLoggedInUser] = useState<string | null>(null);
+  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
+    name: 'Damar Global Network',
+    address: 'Jl. Internet Cepat No. 42, Jakarta',
+    phone: '021-555-0123',
+    logo: null,
+    waGatewayUrl: '',
+    waGatewayToken: '',
+    namaBank: '',
+    nomorRekening: '',
+    atasNama: '',
+  });
 
   const handleLoginSuccess = (username: string) => {
     setLoggedInUser(username);
@@ -17,12 +28,17 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-900">
       {loggedInUser ? (
-        <DashboardPage onLogout={handleLogout} username={loggedInUser} />
+        <DashboardPage
+          onLogout={handleLogout}
+          username={loggedInUser}
+          companyInfo={companyInfo}
+          setCompanyInfo={setCompanyInfo}
+        />
       ) : (
         <LoginPage onLoginSuccess={handleLoginSuccess} />
       )}
       <footer className="fixed bottom-0 left-0 right-0 p-4 text-center text-gray-400 text-sm bg-gray-900/50 backdrop-blur-sm z-50">
-        Hak Cipta © {new Date().getFullYear()} Sidompet Inc. Seluruh hak cipta dilindungi.
+        Hak Cipta © {new Date().getFullYear()} {companyInfo.name}. Seluruh hak cipta dilindungi.
       </footer>
     </div>
   );

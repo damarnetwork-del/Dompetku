@@ -27,9 +27,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
   return (
     <div
-      className="relative flex items-center justify-center min-h-screen bg-cover bg-center bg-no-repeat"
-      style={{ backgroundImage: "url('https://picsum.photos/1920/1080?random=1&grayscale&blur=3')" }}
+      className="relative flex items-center justify-center min-h-screen overflow-hidden"
     >
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat bg-animated"
+        style={{ backgroundImage: "url('https://picsum.photos/1920/1080?random=1&grayscale&blur=3')" }}
+      ></div>
       <div className="absolute inset-0 bg-black opacity-50"></div>
       <div className="relative z-10 w-full max-w-md p-8 space-y-6 bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl">
         <div className="text-center">

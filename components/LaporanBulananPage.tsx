@@ -1,11 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import ArrowLeftIcon from './icons/ArrowLeftIcon';
 import DownloadIcon from './icons/DownloadIcon';
-import { ProfitShare } from './DashboardPage';
 
 // Declare jsPDF from CDN. The autoTable plugin will extend the jsPDF instance.
 declare const jspdf: any;
 declare const Swal: any;
+
+// FIX: Define and export ProfitShare here to break circular dependency
+export interface ProfitShare {
+  nama: string;
+  jumlah: number;
+}
 
 interface FinanceEntry {
   id: number;

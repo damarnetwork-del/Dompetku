@@ -4,12 +4,16 @@ import DownloadIcon from './icons/DownloadIcon';
 import WhatsappIcon from './icons/WhatsappIcon';
 
 declare const jspdf: any;
+declare const Swal: any;
 
 interface CompanyInfo {
     name: string;
     address: string;
     phone: string;
     logo: string | null;
+    namaBank: string;
+    nomorRekening: string;
+    atasNama: string;
 }
 
 interface InvoicePageProps {
@@ -25,6 +29,8 @@ interface InvoiceItem {
     price: number;
 }
 
+const DRAFT_KEY = 'invoiceDraft';
+
 const InvoicePage: React.FC<InvoicePageProps> = ({ onBack, companyInfo, recipientName }) => {
     const [recipient, setRecipient] = useState('');
     const [recipientPhone, setRecipientPhone] = useState('');
@@ -32,6 +38,41 @@ const InvoicePage: React.FC<InvoicePageProps> = ({ onBack, companyInfo, recipien
         { id: 1, description: '', qty: 1, price: 0 }
     ]);
     
+    // Load draft from localStorage on initial render
+    useEffect(() => {
+        try {
+            const savedDraft = localStorage.getItem(DRAFT_KEY);
+            if (savedDraft) {
+                const draft = JSON.parse(savedDraft);
+                if (draft.recipient) setRecipient(draft.recipient);
+                if (draft.recipientPhone) setRecipientPhone(draft.recipientPhone);
+                if (draft.items && draft.items.length > 0) {
+                    setItems(draft.items);
+                }
+            }
+        } catch (error) {
+            console.error("Failed to load invoice draft from localStorage", error);
+            // If parsing fails, remove the corrupted data
+            localStorage.removeItem(DRAFT_KEY);
+        }
+    }, []);
+
+    // Save draft to localStorage whenever it changes
+    useEffect(() => {
+        const draft = {
+            recipient,
+            recipientPhone,
+            items
+        };
+        // Only save if there's something meaningful to save
+        if (recipient || recipientPhone || items.some(item => item.description || item.price > 0)) {
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+        } else {
+            // If the form is completely empty, remove the draft to keep storage clean
+            localStorage.removeItem(DRAFT_KEY);
+        }
+    }, [recipient, recipientPhone, items]);
+
     useEffect(() => {
         if (recipientName) {
             setRecipient(recipientName);
@@ -59,6 +100,32 @@ const InvoicePage: React.FC<InvoicePageProps> = ({ onBack, companyInfo, recipien
     
     const calculateGrandTotal = () => {
         return items.reduce((total, item) => total + (item.qty * item.price), 0);
+    };
+
+    const handleClearForm = () => {
+        Swal.fire({
+            title: 'Bersihkan Formulir?',
+            text: "Semua data pada invoice ini akan dihapus.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, bersihkan!',
+            cancelButtonText: 'Batal',
+            customClass: {
+                popup: '!bg-gray-800 !text-white !rounded-lg',
+                title: '!text-white',
+                confirmButton: '!bg-red-600 hover:!bg-red-700',
+                cancelButton: '!bg-gray-600 hover:!bg-gray-700',
+            },
+        }).then((result: any) => {
+            if (result.isConfirmed) {
+                setRecipient('');
+                setRecipientPhone('');
+                setItems([{ id: Date.now(), description: '', qty: 1, price: 0 }]);
+                localStorage.removeItem(DRAFT_KEY);
+            }
+        });
     };
 
     const handleSendWhatsApp = () => {
@@ -96,7 +163,7 @@ Hormat kami,
         const doc = new jsPDF();
         const pageWidth = doc.internal.pageSize.getWidth();
 
-        // Header
+        // === HEADER ===
         if (companyInfo.logo) {
             try {
                 doc.addImage(companyInfo.logo, 'PNG', 15, 15, 25, 25);
@@ -110,7 +177,6 @@ Hormat kami,
         doc.text(companyInfo.address, 45, 28);
         doc.text(`Telp: ${companyInfo.phone}`, 45, 33);
 
-        // Invoice Title
         doc.setFontSize(22);
         doc.setFont('helvetica', 'bold');
         doc.text('INVOICE', pageWidth - 15, 25, { align: 'right' });
@@ -118,27 +184,40 @@ Hormat kami,
         doc.setLineWidth(0.5);
         doc.line(15, 40, pageWidth - 15, 40);
 
-        // Invoice Details
+        // === INVOICE DETAILS ===
         const invoiceNumber = `INV-${Date.now()}`;
-        const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        const today = new Date();
+        const todayString = today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        const dueDate = new Date(today);
+        dueDate.setDate(today.getDate() + 7); // Due in 7 days
+        const dueDateString = dueDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
         
+        let startY = 55;
+
+        // Left Column (Recipient Info)
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
-        doc.text('Kepada Yth:', 15, 50);
+        doc.text('DITAGIHKAN KEPADA:', 15, startY);
         doc.setFont('helvetica', 'normal');
-        doc.text(recipient || 'N/A', 15, 55);
-
+        doc.text(recipient || 'N/A', 15, startY + 5);
+        if (recipientPhone) {
+            doc.text(recipientPhone, 15, startY + 10);
+        }
+        
+        // Right Column (Invoice Info)
+        const rightColX1 = pageWidth - 65;
+        const rightColX2 = pageWidth - 15;
         doc.setFont('helvetica', 'bold');
-        doc.text('No. Invoice:', pageWidth - 60, 50);
-        doc.setFont('helvetica', 'normal');
-        doc.text(invoiceNumber, pageWidth - 15, 50, { align: 'right' });
+        doc.text('No. Invoice:', rightColX1, startY);
+        doc.text('Tanggal:', rightColX1, startY + 5);
+        doc.text('Jatuh Tempo:', rightColX1, startY + 10);
 
-        doc.setFont('helvetica', 'bold');
-        doc.text('Tanggal:', pageWidth - 60, 55);
         doc.setFont('helvetica', 'normal');
-        doc.text(today, pageWidth - 15, 55, { align: 'right' });
+        doc.text(invoiceNumber, rightColX2, startY, { align: 'right' });
+        doc.text(todayString, rightColX2, startY + 5, { align: 'right' });
+        doc.text(dueDateString, rightColX2, startY + 10, { align: 'right' });
 
-        // Invoice Table
+        // === ITEMS TABLE ===
         const tableData = items.map(item => [
             item.description,
             item.qty.toString(),
@@ -149,7 +228,7 @@ Hormat kami,
         (doc as any).autoTable({
             head: [['Deskripsi', 'Qty', 'Harga (Rp)', 'Total (Rp)']],
             body: tableData,
-            startY: 65,
+            startY: startY + 20,
             headStyles: { fillColor: [31, 41, 55] },
             theme: 'grid',
             didDrawCell: (data: any) => {
@@ -159,20 +238,38 @@ Hormat kami,
             }
         });
 
-        // Grand Total
-        const finalY = (doc as any).lastAutoTable.finalY;
+        // === TOTALS & PAYMENT INFO ===
+        let finalY = (doc as any).lastAutoTable.finalY;
         const grandTotal = calculateGrandTotal();
+        
+        // Grand Total
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
         doc.text('Grand Total (Rp)', pageWidth - 70, finalY + 10);
         doc.text(grandTotal.toLocaleString('id-ID'), pageWidth - 15, finalY + 10, { align: 'right' });
-
-        // Footer / Notes
-        doc.setFontSize(9);
-        doc.setTextColor(100);
-        doc.text('Terima kasih atas bisnis Anda.', 15, doc.internal.pageSize.getHeight() - 10);
         
-        doc.save(`invoice-${invoiceNumber}.pdf`);
+        // Payment Info
+        if (companyInfo.namaBank && companyInfo.nomorRekening && companyInfo.atasNama) {
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Informasi Pembayaran:', 15, finalY + 15);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`${companyInfo.namaBank} - No. Rek: ${companyInfo.nomorRekening}`, 15, finalY + 20);
+            doc.text(`a/n ${companyInfo.atasNama}`, 15, finalY + 25);
+        }
+
+        // === SIGNATURE ===
+        const signatureX = pageWidth - 70;
+        const signatureY = finalY + 35; 
+        
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Hormat kami,', signatureX, signatureY);
+        doc.text('(___________________)', signatureX, signatureY + 20);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Direktur', signatureX, signatureY + 25);
+        
+        doc.save(`invoice-${recipient.replace(/\s/g, '_')}-${invoiceNumber}.pdf`);
     };
 
     return (
@@ -192,6 +289,13 @@ Hormat kami,
                 <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
                     <h2 className="text-3xl font-semibold">Buat Invoice Baru</h2>
                     <div className="flex flex-wrap justify-end gap-2">
+                         <button
+                            onClick={handleClearForm}
+                            className="py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-yellow-500 transition-colors"
+                            aria-label="Bersihkan Formulir"
+                        >
+                            <span>Bersihkan</span>
+                        </button>
                         <button
                             onClick={handleDownloadPDF}
                             disabled={!recipient || items.length === 0 || calculateGrandTotal() <= 0}

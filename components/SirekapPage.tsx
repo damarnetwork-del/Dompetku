@@ -25,17 +25,29 @@ interface FinanceEntry {
   nominal: number;
 }
 
+interface CompanyInfo {
+    name: string;
+    address: string;
+    phone: string;
+    logo: string | null;
+    namaBank: string;
+    nomorRekening: string;
+    atasNama: string;
+}
+
 interface SirekapPageProps {
   onBack: () => void;
   customers: Customer[];
   setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
   financeHistory: FinanceEntry[];
   setFinanceHistory: React.Dispatch<React.SetStateAction<FinanceEntry[]>>;
+  onPaymentSuccess: (customer: Customer, amount: number) => void;
+  companyInfo: CompanyInfo;
 }
 
 
 
-const SirekapPage: React.FC<SirekapPageProps> = ({ onBack, customers, setCustomers, financeHistory, setFinanceHistory }) => {
+const SirekapPage: React.FC<SirekapPageProps> = ({ onBack, customers, setCustomers, financeHistory, setFinanceHistory, onPaymentSuccess, companyInfo }) => {
   const [activeMenu, setActiveMenu] = useState('daftar'); // 'daftar', 'input', 'keuangan', or 'riwayat'
   
   // State for the new customer form
@@ -256,6 +268,9 @@ const SirekapPage: React.FC<SirekapPageProps> = ({ onBack, customers, setCustome
         title: 'Pembayaran Berhasil',
         text: `Pembayaran untuk ${customer.nama} sebesar Rp ${totalTagihan.toLocaleString('id-ID')} berhasil dicatat.`
       });
+
+      // Send WhatsApp confirmation automatically via prop
+      onPaymentSuccess(customer, totalTagihan);
   };
   
   const handleNewBillingCycle = () => {
@@ -306,6 +321,15 @@ const SirekapPage: React.FC<SirekapPageProps> = ({ onBack, customers, setCustome
     formattedPhone = formattedPhone.replace(/\D/g, '');
 
     const totalTagihan = Number(customer.harga) + customer.tunggakan;
+    
+    let paymentInfo = "Pembayaran dapat dilakukan melalui transfer atau tunai.";
+    if (companyInfo.namaBank && companyInfo.nomorRekening && companyInfo.atasNama) {
+        paymentInfo = `Mohon untuk segera melakukan pembayaran agar layanan Anda tetap berjalan lancar. Pembayaran dapat dilakukan melalui transfer ke rekening berikut:
+
+*Bank:* ${companyInfo.namaBank}
+*No. Rekening:* ${companyInfo.nomorRekening}
+*Atas Nama:* ${companyInfo.atasNama}`;
+    }
 
     const message = encodeURIComponent(
 `*Pemberitahuan Tagihan Internet*
@@ -318,12 +342,12 @@ Rincian Tagihan:
 - Jenis Langganan: ${customer.jenisLangganan}
 - Total Tagihan: *Rp ${totalTagihan.toLocaleString('id-ID')}*
 
-Mohon untuk segera melakukan pembayaran agar layanan Anda tetap berjalan lancar. Pembayaran dapat dilakukan melalui transfer atau tunai.
+${paymentInfo}
 
 Terima kasih atas perhatian dan kerjasamanya.
 
 Hormat kami,
-Sidompet Inc.`
+${companyInfo.name}`
     );
 
     const whatsappUrl = `https://wa.me/${formattedPhone}?text=${message}`;
@@ -391,11 +415,22 @@ Sidompet Inc.`
               <tr key={customer.id} className="border-b border-gray-700 hover:bg-white/5">
                 <th scope="row" className="px-6 py-4 font-medium text-white whitespace-nowrap">{customer.nama}</th>
                  <td className="px-6 py-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      customer.status === 'Lunas' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
-                  }`}>
-                      {customer.status}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        customer.status === 'Lunas' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                    }`}>
+                        {customer.status}
+                    </span>
+                     {customer.status === 'Belum Lunas' && (
+                        <button 
+                            onClick={() => handleSendWhatsApp(customer)} 
+                            className="font-medium text-teal-400 hover:text-teal-300 transition-colors p-1 rounded-full bg-teal-500/10 hover:bg-teal-500/20"
+                            title="Kirim Pengingat Tagihan WhatsApp"
+                        >
+                            <WhatsappIcon className="w-4 h-4" />
+                        </button>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4 text-right">{Number(customer.harga).toLocaleString('id-ID')}</td>
                 <td className="px-6 py-4 text-right">{customer.tunggakan.toLocaleString('id-ID')}</td>
@@ -407,14 +442,6 @@ Sidompet Inc.`
                         className="font-medium text-green-400 hover:text-green-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors text-xs py-1 px-2 rounded bg-green-500/10 hover:bg-green-500/20 disabled:bg-gray-500/10"
                     >
                         Bayar
-                    </button>
-                    <button 
-                        onClick={() => handleSendWhatsApp(customer)} 
-                        disabled={customer.status === 'Lunas'}
-                        className="font-medium text-teal-400 hover:text-teal-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors p-1.5 rounded bg-teal-500/10 hover:bg-teal-500/20 disabled:bg-gray-500/10"
-                        title="Kirim Notifikasi Tagihan WhatsApp"
-                    >
-                        <WhatsappIcon className="w-4 h-4" />
                     </button>
                     <button 
                         onClick={() => handleStartEditCustomer(customer)} 
