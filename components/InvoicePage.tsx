@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import ArrowLeftIcon from './icons/ArrowLeftIcon';
 import DownloadIcon from './icons/DownloadIcon';
@@ -51,9 +52,8 @@ const InvoicePage: React.FC<InvoicePageProps> = ({ onBack, companyInfo, recipien
                 }
             }
         } catch (error) {
-            console.error("Failed to load invoice draft from localStorage", error);
-            // If parsing fails, remove the corrupted data
-            localStorage.removeItem(DRAFT_KEY);
+            console.error("Gagal memuat draf invoice, memulai dengan formulir kosong.", error);
+            // Jangan hapus data yang mungkin dapat dipulihkan
         }
     }, []);
 

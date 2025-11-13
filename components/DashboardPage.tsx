@@ -56,9 +56,7 @@ export interface CompanyInfo {
 }
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, companyInfo, setCompanyInfo }) => {
-  const [showSirekap, setShowSirekap] = useState(false);
-  const [showLaporan, setShowLaporan] = useState(false);
-  const [showInvoice, setShowInvoice] = useState(false); // State for invoice page
+  const [activePage, setActivePage] = useState<'dashboard' | 'sirekap' | 'laporan' | 'invoice'>('dashboard');
 
   const [customers, setCustomers] = useState<Customer[]>(() => {
     try {
@@ -188,11 +186,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
 
     Swal.fire({
         title: 'Backup Berhasil',
-        text: `File ${link.download} telah diunduh.`,
+        html: `File <strong>${link.download}</strong> telah diunduh dan akan tersimpan di folder 'Downloads' browser Anda.`,
         icon: 'success',
         customClass: {
             popup: '!bg-gray-800 !text-white !rounded-lg',
             title: '!text-white',
+            htmlContainer: '!text-gray-300',
             confirmButton: '!bg-blue-600 hover:!bg-blue-700',
         }
     });
@@ -429,38 +428,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
     });
   };
 
-  const handleSirekapClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    setShowSirekap(true);
-    setShowLaporan(false);
-    setShowInvoice(false);
-  };
-
-  const handleLaporanClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    setShowLaporan(true);
-    setShowSirekap(false);
-    setShowInvoice(false);
-  };
-
-  const handleInvoiceClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    setShowInvoice(true);
-    setShowLaporan(false);
-    setShowSirekap(false);
-  };
-
   const handleBack = () => {
-    setShowSirekap(false);
-    setShowLaporan(false);
-    setShowInvoice(false);
+    setActivePage('dashboard');
   };
   
   const getPageTitle = () => {
-    if (showSirekap) return 'Sirekap';
-    if (showLaporan) return 'Laporan Bulanan';
-    if (showInvoice) return 'Invoice';
-    return 'Dasbor';
+    switch (activePage) {
+      case 'sirekap':
+        return 'Sirekap';
+      case 'laporan':
+        return 'Laporan Bulanan';
+      case 'invoice':
+        return 'Invoice';
+      default:
+        return 'Dasbor';
+    }
   };
 
   const renderFinancialVisualisation = () => {
@@ -475,13 +457,25 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
     }
     
     // Calculate summary data
-    const totalPemasukan = financeHistory
-        .filter(e => e.kategori === 'Pemasukan')
-        .reduce((acc, e) => acc + e.nominal, 0);
+    const pemasukanEntries = financeHistory.filter(e => e.kategori === 'Pemasukan');
+    const pengeluaranEntries = financeHistory.filter(e => e.kategori === 'Pengeluaran');
 
-    const totalPengeluaran = financeHistory
-        .filter(e => e.kategori === 'Pengeluaran')
-        .reduce((acc, e) => acc + e.nominal, 0);
+    const totalPemasukan = pemasukanEntries.reduce((acc, e) => acc + e.nominal, 0);
+    const totalPengeluaran = pengeluaranEntries.reduce((acc, e) => acc + e.nominal, 0);
+    
+    const pemasukanTunai = pemasukanEntries
+      .filter(e => e.metode === 'Tunai')
+      .reduce((acc, e) => acc + e.nominal, 0);
+    const pemasukanTransfer = pemasukanEntries
+      .filter(e => e.metode === 'Transfer')
+      .reduce((acc, e) => acc + e.nominal, 0);
+
+    const pengeluaranTunai = pengeluaranEntries
+      .filter(e => e.metode === 'Tunai')
+      .reduce((acc, e) => acc + e.nominal, 0);
+    const pengeluaranTransfer = pengeluaranEntries
+      .filter(e => e.metode === 'Transfer')
+      .reduce((acc, e) => acc + e.nominal, 0);
     
     const saldoAkhir = totalPemasukan - totalPengeluaran;
 
@@ -575,10 +569,18 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
               <div className="bg-green-500/10 p-4 rounded-lg">
                   <p className="text-sm text-green-400 font-semibold">Total Pemasukan</p>
                   <p className="text-xl sm:text-2xl font-bold text-white">Rp {totalPemasukan.toLocaleString('id-ID')}</p>
+                   <div className="mt-2 text-xs text-gray-300 space-y-1">
+                      <p>Tunai: Rp {pemasukanTunai.toLocaleString('id-ID')}</p>
+                      <p>Transfer: Rp {pemasukanTransfer.toLocaleString('id-ID')}</p>
+                  </div>
               </div>
               <div className="bg-red-500/10 p-4 rounded-lg">
                   <p className="text-sm text-red-400 font-semibold">Total Pengeluaran</p>
                   <p className="text-xl sm:text-2xl font-bold text-white">Rp {totalPengeluaran.toLocaleString('id-ID')}</p>
+                  <div className="mt-2 text-xs text-gray-300 space-y-1">
+                      <p>Tunai: Rp {pengeluaranTunai.toLocaleString('id-ID')}</p>
+                      <p>Transfer: Rp {pengeluaranTransfer.toLocaleString('id-ID')}</p>
+                  </div>
               </div>
               <div className="bg-sky-500/10 p-4 rounded-lg">
                   <p className="text-sm text-sky-400 font-semibold">Saldo Akhir</p>
@@ -680,7 +682,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
           </div>
         </header>
 
-        {showSirekap ? (
+        {activePage === 'sirekap' ? (
           <SirekapPage 
             onBack={handleBack} 
             customers={customers}
@@ -690,7 +692,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
             onPaymentSuccess={handlePaymentNotification}
             companyInfo={companyInfo}
           />
-        ) : showLaporan ? (
+        ) : activePage === 'laporan' ? (
           <LaporanBulananPage 
             onBack={handleBack} 
             financeHistory={financeHistory}
@@ -699,7 +701,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
             setFinanceHistory={setFinanceHistory}
             setProfitSharingData={setProfitSharingData}
           />
-        ) : showInvoice ? (
+        ) : activePage === 'invoice' ? (
           <InvoicePage
             onBack={handleBack}
             companyInfo={companyInfo}
@@ -713,7 +715,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
                   <li>
                     <a 
                       href="#" 
-                      onClick={handleSirekapClick}
+                      onClick={(e) => { e.preventDefault(); setActivePage('sirekap'); }}
                       className="text-base sm:text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 border-b-2 border-transparent hover:border-sky-400 whitespace-nowrap">
                       Sirekap
                     </a>
@@ -721,7 +723,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
                   <li>
                     <a 
                       href="#" 
-                      onClick={handleLaporanClick}
+                      onClick={(e) => { e.preventDefault(); setActivePage('laporan'); }}
                       className="text-base sm:text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 border-b-2 border-transparent hover:border-sky-400 whitespace-nowrap">
                       Laporan Bulanan
                     </a>
@@ -729,7 +731,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
                   <li>
                     <a 
                       href="#" 
-                      onClick={handleInvoiceClick}
+                      onClick={(e) => { e.preventDefault(); setActivePage('invoice'); }}
                       className="text-base sm:text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 border-b-2 border-transparent hover:border-sky-400 whitespace-nowrap">
                       Invoice
                     </a>

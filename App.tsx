@@ -24,11 +24,13 @@ function App() {
     try {
         const saved = localStorage.getItem(COMPANY_INFO_KEY);
         if (saved) {
-            return JSON.parse(saved);
+            // Gabungkan data yang disimpan dengan default untuk menangani pembaruan skema dengan baik
+            const parsed = JSON.parse(saved);
+            return { ...defaultCompanyInfo, ...parsed };
         }
     } catch (error) {
-        console.error("Gagal memuat info perusahaan dari localStorage", error);
-        localStorage.removeItem(COMPANY_INFO_KEY);
+        console.error("Gagal memuat info perusahaan dari localStorage, kembali ke default.", error);
+        // Jangan hapus item, mungkin bisa dipulihkan. Cukup gunakan default untuk sesi ini.
     }
     return defaultCompanyInfo;
   });

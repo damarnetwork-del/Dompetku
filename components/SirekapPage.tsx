@@ -242,35 +242,71 @@ const SirekapPage: React.FC<SirekapPageProps> = ({ onBack, customers, setCustome
   };
 
   const handlePayment = (customer: Customer) => {
-      if (customer.status === 'Lunas') return;
+    if (customer.status === 'Lunas') return;
 
-      const totalTagihan = Number(customer.harga) + customer.tunggakan;
-      
-      const newPaymentEntry: FinanceEntry = {
+    const totalTagihan = Number(customer.harga) + customer.tunggakan;
+
+    Swal.fire({
+      title: 'Pilih Metode Pembayaran',
+      html: `Total tagihan untuk <strong>${customer.nama}</strong> adalah <strong>Rp ${totalTagihan.toLocaleString('id-ID')}</strong>.`,
+      input: 'radio',
+      inputOptions: {
+        'Tunai': 'Tunai',
+        'Transfer': 'Transfer'
+      },
+      inputValue: 'Tunai',
+      showCancelButton: true,
+      confirmButtonText: 'Konfirmasi Pembayaran',
+      cancelButtonText: 'Batal',
+      customClass: {
+        popup: '!bg-gray-800 !text-white !rounded-lg',
+        title: '!text-white',
+        htmlContainer: '!text-gray-300',
+        confirmButton: '!bg-green-600 hover:!bg-green-700',
+        cancelButton: '!bg-gray-600 hover:!bg-gray-700',
+        input: '!text-gray-300 !ml-[-1em] !mt-4',
+        inputLabel: '!text-gray-300'
+      },
+      inputValidator: (value: any) => {
+        if (!value) {
+          return 'Anda harus memilih metode pembayaran!'
+        }
+      }
+    }).then((result: any) => {
+      if (result.isConfirmed && result.value) {
+        const metodePembayaran = result.value;
+
+        const newPaymentEntry: FinanceEntry = {
           id: Date.now(),
           deskripsi: `Pembayaran langganan - ${customer.nama}`,
           tanggal: new Date().toISOString().split('T')[0],
           kategori: 'Pemasukan',
-          metode: 'Tunai', // Default method, can be updated with a modal
+          metode: metodePembayaran,
           nominal: totalTagihan,
-      };
-      setFinanceHistory(prevHistory => [...prevHistory, newPaymentEntry]);
+        };
+        setFinanceHistory(prevHistory => [...prevHistory, newPaymentEntry]);
 
-      const updatedCustomers = customers.map(c => 
-          c.id === customer.id 
-          ? { ...c, status: 'Lunas', tunggakan: 0 } 
-          : c
-      );
-      setCustomers(updatedCustomers);
-      
-      Swal.fire({
-        icon: 'success',
-        title: 'Pembayaran Berhasil',
-        text: `Pembayaran untuk ${customer.nama} sebesar Rp ${totalTagihan.toLocaleString('id-ID')} berhasil dicatat.`
-      });
+        const updatedCustomers = customers.map(c =>
+          c.id === customer.id
+            ? { ...c, status: 'Lunas', tunggakan: 0 }
+            : c
+        );
+        setCustomers(updatedCustomers);
 
-      // Send WhatsApp confirmation automatically via prop
-      onPaymentSuccess(customer, totalTagihan);
+        Swal.fire({
+          icon: 'success',
+          title: 'Pembayaran Berhasil',
+          text: `Pembayaran untuk ${customer.nama} sebesar Rp ${totalTagihan.toLocaleString('id-ID')} (${metodePembayaran}) berhasil dicatat.`,
+           customClass: {
+              popup: '!bg-gray-800 !text-white !rounded-lg',
+              title: '!text-white',
+              confirmButton: '!bg-blue-600 hover:!bg-blue-700',
+           }
+        });
+
+        onPaymentSuccess(customer, totalTagihan);
+      }
+    });
   };
   
   const handleNewBillingCycle = () => {
@@ -533,6 +569,34 @@ ${companyInfo.name}`
         );
     }
     
+    // Calculate summary
+    let totalPemasukan = 0;
+    let totalPengeluaran = 0;
+    let pemasukanTunai = 0;
+    let pemasukanTransfer = 0;
+    let pengeluaranTunai = 0;
+    let pengeluaranTransfer = 0;
+    
+    filteredFinanceHistory.forEach(entry => {
+        if (entry.kategori === 'Pemasukan') {
+            totalPemasukan += entry.nominal;
+            if (entry.metode === 'Tunai') {
+                pemasukanTunai += entry.nominal;
+            } else if (entry.metode === 'Transfer') {
+                pemasukanTransfer += entry.nominal;
+            }
+        } else if (entry.kategori === 'Pengeluaran') {
+            totalPengeluaran += entry.nominal;
+            if (entry.metode === 'Tunai') {
+                pengeluaranTunai += entry.nominal;
+            } else if (entry.metode === 'Transfer') {
+                pengeluaranTransfer += entry.nominal;
+            }
+        }
+    });
+    
+    const saldoKeseluruhan = totalPemasukan - totalPengeluaran;
+
     return (
       <>
         {/* Filter Section */}
@@ -559,6 +623,32 @@ ${companyInfo.name}`
             </div>
         </div>
         
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-green-500/10 p-4 rounded-lg">
+                <p className="text-sm text-green-400 font-semibold">Total Pemasukan</p>
+                <p className="text-xl font-bold text-white">Rp {totalPemasukan.toLocaleString('id-ID')}</p>
+                <div className="mt-2 text-xs text-gray-300 space-y-1">
+                    <p>Tunai: Rp {pemasukanTunai.toLocaleString('id-ID')}</p>
+                    <p>Transfer: Rp {pemasukanTransfer.toLocaleString('id-ID')}</p>
+                </div>
+            </div>
+            <div className="bg-red-500/10 p-4 rounded-lg">
+                <p className="text-sm text-red-400 font-semibold">Total Pengeluaran</p>
+                <p className="text-xl font-bold text-white">Rp {totalPengeluaran.toLocaleString('id-ID')}</p>
+                <div className="mt-2 text-xs text-gray-300 space-y-1">
+                    <p>Tunai: Rp {pengeluaranTunai.toLocaleString('id-ID')}</p>
+                    <p>Transfer: Rp {pengeluaranTransfer.toLocaleString('id-ID')}</p>
+                </div>
+            </div>
+            <div className="bg-sky-500/10 p-4 rounded-lg">
+                <p className="text-sm text-sky-400 font-semibold">Saldo (sesuai filter)</p>
+                <p className={`text-xl font-bold ${saldoKeseluruhan >= 0 ? 'text-white' : 'text-red-400'}`}>
+                    Rp {saldoKeseluruhan.toLocaleString('id-ID')}
+                </p>
+            </div>
+        </div>
+
         {filteredFinanceHistory.length === 0 ? (
           <div className="text-center text-gray-400 mt-8">
             <p>Tidak ada data transaksi yang cocok dengan filter tanggal Anda.</p>
