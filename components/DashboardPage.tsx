@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import SirekapPage from './SirekapPage';
 import LaporanBulananPage from './LaporanBulananPage';
 import InvoicePage from './InvoicePage'; // Import the new InvoicePage
@@ -54,82 +55,64 @@ export interface CompanyInfo {
     atasNama: string;
 }
 
-// Initial data moved from SirekapPage
-const initialCustomers: Customer[] = [
-    {
-      id: 1,
-      nama: 'Damar',
-      noHp: '081234567890',
-      jenisLangganan: 'PPPoE',
-      alamat: 'Jl. Merdeka No. 1, Jakarta',
-      harga: '200000',
-      status: 'Belum Lunas',
-      tunggakan: 0,
-    },
-    {
-      id: 2,
-      nama: 'Budi Santoso',
-      noHp: '087654321098',
-      jenisLangganan: 'Hotspot',
-      alamat: 'Jl. Pahlawan No. 2, Surabaya',
-      harga: '150000',
-      status: 'Lunas',
-      tunggakan: 0,
-    },
-    {
-      id: 3,
-      nama: 'Citra Lestari',
-      noHp: '089988776655',
-      jenisLangganan: 'Static',
-      alamat: 'Jl. Cendrawasih No. 3, Bandung',
-      harga: '300000',
-      status: 'Belum Lunas',
-      tunggakan: 300000,
-    },
-];
-
-const initialFinanceHistory: FinanceEntry[] = [
-    {
-      id: 1,
-      deskripsi: 'Pembayaran langganan - Budi Santoso',
-      tanggal: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString().split('T')[0],
-      kategori: 'Pemasukan',
-      metode: 'Transfer',
-      nominal: 150000,
-    },
-    {
-      id: 2,
-      deskripsi: 'Pembelian Router Tambahan',
-      tanggal: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString().split('T')[0],
-      kategori: 'Pengeluaran',
-      metode: 'Tunai',
-      nominal: 450000,
-    },
-    {
-      id: 3,
-      deskripsi: 'Biaya Listrik Kantor',
-      tanggal: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split('T')[0],
-      kategori: 'Pengeluaran',
-      metode: 'Transfer',
-      nominal: 250000,
-    },
-     {
-      id: 4,
-      deskripsi: 'Pemasangan baru - Pelanggan X',
-      tanggal: new Date().toISOString().split('T')[0],
-      kategori: 'Pemasukan',
-      metode: 'Tunai',
-      nominal: 500000,
-    },
-];
-
 const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, companyInfo, setCompanyInfo }) => {
   const [showSirekap, setShowSirekap] = useState(false);
   const [showLaporan, setShowLaporan] = useState(false);
   const [showInvoice, setShowInvoice] = useState(false); // State for invoice page
-  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
-  const [financeHistory, setFinanceHistory] = useState<FinanceEntry[]>(initialFinanceHistory);
-  const [profitSharingData, setProfitSharingData] = useState<ProfitShare[]>([]);
+
+  const [customers, setCustomers] = useState<Customer[]>(() => {
+    try {
+        const saved = localStorage.getItem('sidompet_customers');
+        return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+        console.error("Gagal memuat data pelanggan dari penyimpanan:", e);
+        return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+        localStorage.setItem('sidompet_customers', JSON.stringify(customers));
+    } catch (e) {
+        console.error("Gagal menyimpan data pelanggan:", e);
+    }
+  }, [customers]);
+
+  const [financeHistory, setFinanceHistory] = useState<FinanceEntry[]>(() => {
+      try {
+          const saved = localStorage.getItem('sidompet_financeHistory');
+          return saved ? JSON.parse(saved) : [];
+      } catch (e) {
+          console.error("Gagal memuat riwayat keuangan dari penyimpanan:", e);
+          return [];
+      }
+  });
+
+  useEffect(() => {
+      try {
+          localStorage.setItem('sidompet_financeHistory', JSON.stringify(financeHistory));
+      } catch (e) {
+          console.error("Gagal menyimpan riwayat keuangan:", e);
+      }
+  }, [financeHistory]);
+
+  const [profitSharingData, setProfitSharingData] = useState<ProfitShare[]>(() => {
+    try {
+        const saved = localStorage.getItem('sidompet_profitSharing');
+        return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+        console.error("Gagal memuat data bagi hasil dari penyimpanan:", e);
+        return [];
+    }
+  });
+
+  useEffect(() => {
+      try {
+          localStorage.setItem('sidompet_profitSharing', JSON.stringify(profitSharingData));
+      } catch (e) {
+          console.error("Gagal menyimpan data bagi hasil:", e);
+      }
+  }, [profitSharingData]);
 
   const handlePaymentNotification = async (customer: { nama: string; noHp: string; }, amount: number) => {
     if (!companyInfo.waGatewayUrl || !companyInfo.waGatewayToken) {
@@ -585,53 +568,55 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
     const formatYAxis = (value: number) => new Intl.NumberFormat('id-ID', { notation: 'compact', compactDisplay: 'short' }).format(value);
 
     return (
-       <div className="bg-black/20 rounded-lg p-6 sm:p-8 w-full flex-grow">
-          <h2 className="text-3xl font-semibold mb-6 text-center">Ringkasan Keuangan</h2>
+       <div className="bg-black/20 rounded-lg p-4 sm:p-8 w-full flex-grow">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-6 text-center">Ringkasan Keuangan</h2>
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 text-center">
               <div className="bg-green-500/10 p-4 rounded-lg">
                   <p className="text-sm text-green-400 font-semibold">Total Pemasukan</p>
-                  <p className="text-2xl font-bold text-white">Rp {totalPemasukan.toLocaleString('id-ID')}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-white">Rp {totalPemasukan.toLocaleString('id-ID')}</p>
               </div>
               <div className="bg-red-500/10 p-4 rounded-lg">
                   <p className="text-sm text-red-400 font-semibold">Total Pengeluaran</p>
-                  <p className="text-2xl font-bold text-white">Rp {totalPengeluaran.toLocaleString('id-ID')}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-white">Rp {totalPengeluaran.toLocaleString('id-ID')}</p>
               </div>
               <div className="bg-sky-500/10 p-4 rounded-lg">
                   <p className="text-sm text-sky-400 font-semibold">Saldo Akhir</p>
-                  <p className={`text-2xl font-bold ${saldoAkhir >= 0 ? 'text-white' : 'text-red-400'}`}>
+                  <p className={`text-xl sm:text-2xl font-bold ${saldoAkhir >= 0 ? 'text-white' : 'text-red-400'}`}>
                     Rp {saldoAkhir.toLocaleString('id-ID')}
                   </p>
               </div>
           </div>
 
           {/* New Recharts Composed Chart with Stacked Bars */}
-          <div className="w-full h-80 mt-8">
+          <div className="w-full h-72 sm:h-80 mt-8">
             <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart
                     data={chartData}
                     margin={{
                         top: 5,
-                        right: 20,
-                        left: 20,
+                        right: 5,
+                        left: 5,
                         bottom: 5,
                     }}
                 >
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                    <XAxis dataKey="date" stroke="#9ca3af" tick={{ fontSize: 12 }} />
+                    <XAxis dataKey="date" stroke="#9ca3af" tick={{ fontSize: 10 }} />
                     <YAxis 
                         yAxisId="left" 
                         orientation="left" 
                         stroke="#9ca3af"
                         tickFormatter={formatYAxis}
-                        width={60}
+                        width={45}
+                        tick={{ fontSize: 10 }}
                     />
                      <YAxis 
                         yAxisId="right" 
                         orientation="right" 
                         stroke="#38bdf8"
                         tickFormatter={formatYAxis}
-                        width={60}
+                        width={45}
+                        tick={{ fontSize: 10 }}
                     />
                     <Tooltip
                         cursor={{ fill: 'rgba(107, 114, 128, 0.1)' }}
@@ -643,7 +628,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
                         labelStyle={{ color: '#d1d5db', fontWeight: 'bold' }}
                         formatter={(value: number, name: string) => [`Rp ${value.toLocaleString('id-ID')}`, name]}
                     />
-                    <Legend wrapperStyle={{ color: '#d1d5db', paddingTop: '10px' }} />
+                    <Legend wrapperStyle={{ color: '#d1d5db', paddingTop: '10px', fontSize: '12px' }} />
                     
                     {Array.from(allIncomeCategories).map(cat => (
                         <Bar key={cat} yAxisId="left" dataKey={cat} stackId="pemasukan" fill={categoryColors[cat] || '#22c55e'} />
@@ -669,28 +654,28 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
       <div className="absolute inset-0 bg-black opacity-50"></div>
       
       {/* Full-screen content container */}
-      <div className="relative z-10 w-full min-h-screen flex flex-col p-8 sm:p-12 text-white">
+      <div className="relative z-10 w-full min-h-screen flex flex-col p-4 sm:p-8 text-white">
         
         {/* Header Section */}
-        <header className="flex justify-between items-start mb-8">
+        <header className="flex flex-col sm:flex-row justify-between items-start mb-8 gap-4 sm:gap-0">
           <div className="flex items-center gap-4">
-            {companyInfo.logo && <img src={companyInfo.logo} alt="Company Logo" className="h-12 w-12 object-contain" />}
-            <h1 className="text-4xl font-bold tracking-wider">{getPageTitle()}</h1>
+            {companyInfo.logo && <img src={companyInfo.logo} alt="Company Logo" className="h-10 w-10 sm:h-12 sm:w-12 object-contain" />}
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-wider">{getPageTitle()}</h1>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            <button
-              onClick={onLogout}
-              className="py-2 px-5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-transform transform hover:scale-105"
-            >
-              Keluar
-            </button>
+          <div className="flex items-center gap-2 self-end">
             <button
               onClick={handleSettingsClick}
               className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
               aria-label="Pengaturan"
               title="Pengaturan"
             >
-              <SettingsIcon className="w-6 h-6 text-white"/>
+              <SettingsIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white"/>
+            </button>
+            <button
+              onClick={onLogout}
+              className="py-2 px-5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-transform transform hover:scale-105"
+            >
+              Keluar
             </button>
           </div>
         </header>
@@ -722,14 +707,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
         ) : (
           <>
             {/* Menu Section */}
-            <div className="mb-8">
+            <div className="mb-8 overflow-x-auto">
               <nav>
-                <ul className="flex flex-wrap gap-x-6 gap-y-2">
+                <ul className="flex flex-nowrap sm:flex-wrap gap-x-4 sm:gap-x-6 gap-y-2">
                   <li>
                     <a 
                       href="#" 
                       onClick={handleSirekapClick}
-                      className="text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 border-b-2 border-transparent hover:border-sky-400">
+                      className="text-base sm:text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 border-b-2 border-transparent hover:border-sky-400 whitespace-nowrap">
                       Sirekap
                     </a>
                   </li>
@@ -737,7 +722,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
                     <a 
                       href="#" 
                       onClick={handleLaporanClick}
-                      className="text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 border-b-2 border-transparent hover:border-sky-400">
+                      className="text-base sm:text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 border-b-2 border-transparent hover:border-sky-400 whitespace-nowrap">
                       Laporan Bulanan
                     </a>
                   </li>
@@ -745,7 +730,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
                     <a 
                       href="#" 
                       onClick={handleInvoiceClick}
-                      className="text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 border-b-2 border-transparent hover:border-sky-400">
+                      className="text-base sm:text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 border-b-2 border-transparent hover:border-sky-400 whitespace-nowrap">
                       Invoice
                     </a>
                   </li>

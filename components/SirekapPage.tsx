@@ -396,7 +396,66 @@ ${companyInfo.name}`
     }
     
     return (
-      <div className="overflow-x-auto">
+      <div className="space-y-4 md:hidden">
+      {filteredCustomers.map((customer) => {
+        const totalTagihan = Number(customer.harga) + customer.tunggakan;
+        return (
+          <div key={customer.id} className="bg-white/5 p-4 rounded-lg shadow">
+            <div className="flex justify-between items-start">
+              <span className="font-bold text-lg text-white">{customer.nama}</span>
+              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                  customer.status === 'Lunas' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+              }`}>
+                  {customer.status}
+              </span>
+            </div>
+            <div className="mt-4 space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-gray-400">Harga</span><span>Rp {Number(customer.harga).toLocaleString('id-ID')}</span></div>
+              <div className="flex justify-between"><span className="text-gray-400">Tunggakan</span><span>Rp {customer.tunggakan.toLocaleString('id-ID')}</span></div>
+              <div className="flex justify-between font-bold text-base"><span className="text-gray-300">Total Tagihan</span><span>Rp {totalTagihan.toLocaleString('id-ID')}</span></div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-gray-700 flex justify-between items-center gap-2">
+              <div className="flex-1 flex gap-2">
+                 <button 
+                      onClick={() => handlePayment(customer)} 
+                      disabled={customer.status === 'Lunas'}
+                      className="flex-1 font-medium text-green-400 hover:text-green-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors text-xs py-2 px-2 rounded bg-green-500/10 hover:bg-green-500/20 disabled:bg-gray-500/10"
+                  >
+                      Bayar
+                  </button>
+                  <button 
+                      onClick={() => handleStartEditCustomer(customer)} 
+                      className="flex-1 font-medium text-blue-400 hover:text-blue-300 transition-colors text-xs py-2 px-2 rounded bg-blue-500/10 hover:bg-blue-500/20"
+                  >
+                      Edit
+                  </button>
+                  <button 
+                      onClick={() => handleDeleteCustomer(customer.id)} 
+                      className="flex-1 font-medium text-red-400 hover:text-red-300 transition-colors text-xs py-2 px-2 rounded bg-red-500/10 hover:bg-red-500/20"
+                  >
+                      Hapus
+                  </button>
+              </div>
+              {customer.status === 'Belum Lunas' && (
+                <button 
+                  onClick={() => handleSendWhatsApp(customer)} 
+                  className="font-medium text-teal-400 hover:text-teal-300 transition-colors p-2 rounded-full bg-teal-500/10 hover:bg-teal-500/20"
+                  title="Kirim Pengingat Tagihan WhatsApp"
+                >
+                  <WhatsappIcon className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+    )
+  }
+
+  const renderCustomerTable = () => {
+    return (
+      <div className="overflow-x-auto hidden md:block">
         <table className="min-w-full text-sm text-left text-gray-300">
           <thead className="text-xs text-white uppercase bg-white/10">
             <tr>
@@ -505,7 +564,38 @@ ${companyInfo.name}`
             <p>Tidak ada data transaksi yang cocok dengan filter tanggal Anda.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            {/* Mobile Card View */}
+            <div className="space-y-4 md:hidden">
+              {filteredFinanceHistory.map(entry => (
+                <div key={entry.id} className="bg-white/5 p-4 rounded-lg shadow">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <p className="font-bold text-base text-white break-words">{entry.deskripsi}</p>
+                      <p className="text-xs text-gray-400">{new Date(entry.tanggal).toLocaleDateString('id-ID', { timeZone: 'UTC', day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                    </div>
+                     <span className={`ml-2 flex-shrink-0 px-2 py-1 rounded-full text-xs font-semibold ${
+                        entry.kategori === 'Pemasukan' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                    }`}>
+                        {entry.kategori}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex justify-between items-center">
+                    <p className="text-sm text-gray-300">{entry.metode}</p>
+                    <p className={`text-lg font-semibold ${entry.kategori === 'Pemasukan' ? 'text-green-400' : 'text-red-400'}`}>
+                      {entry.kategori === 'Pemasukan' ? '+' : '-'} Rp {entry.nominal.toLocaleString('id-ID')}
+                    </p>
+                  </div>
+                   <div className="mt-4 pt-3 border-t border-gray-700 flex justify-end items-center gap-4">
+                      <button onClick={() => handleStartEdit(entry)} className="font-medium text-blue-400 hover:text-blue-300 transition-colors">Edit</button>
+                      <button onClick={() => handleDeleteEntry(entry.id)} className="font-medium text-red-400 hover:text-red-300 transition-colors">Hapus</button>
+                   </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="overflow-x-auto hidden md:block">
               <table className="min-w-full text-sm text-left text-gray-300">
                   <thead className="text-xs text-white uppercase bg-white/10">
                       <tr>
@@ -542,6 +632,7 @@ ${companyInfo.name}`
                   </tbody>
               </table>
           </div>
+        </>
         )}
       </>
     );
@@ -561,13 +652,13 @@ ${companyInfo.name}`
       </div>
 
       {/* Menu Section */}
-      <div className="mb-8">
+      <div className="mb-8 overflow-x-auto">
         <nav>
-          <ul className="flex flex-wrap gap-x-6 gap-y-2">
+          <ul className="flex flex-nowrap sm:flex-wrap gap-x-4 sm:gap-x-6 gap-y-2">
             <li>
               <button
                 onClick={() => setActiveMenu('daftar')}
-                className={`text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 ${
+                className={`text-base sm:text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 whitespace-nowrap ${
                   activeMenu === 'daftar' ? 'border-b-2 border-sky-400' : 'border-b-2 border-transparent'
                 }`}>
                 Daftar Pelanggan
@@ -579,10 +670,10 @@ ${companyInfo.name}`
                   if (editingCustomer) resetCustomerForm();
                   setActiveMenu('input');
                 }}
-                className={`text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 ${
+                className={`text-base sm:text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 whitespace-nowrap ${
                   activeMenu === 'input' ? 'border-b-2 border-sky-400' : 'border-b-2 border-transparent'
                 }`}>
-                Input Pelanggan Baru
+                Input Pelanggan
               </button>
             </li>
             <li>
@@ -591,7 +682,7 @@ ${companyInfo.name}`
                   if (editingEntry) setEditingEntry(null); // Reset if switching away from edit
                   setActiveMenu('keuangan');
                 }}
-                className={`text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 ${
+                className={`text-base sm:text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 whitespace-nowrap ${
                   activeMenu === 'keuangan' ? 'border-b-2 border-sky-400' : 'border-b-2 border-transparent'
                 }`}>
                 Catatan Keuangan
@@ -600,7 +691,7 @@ ${companyInfo.name}`
             <li>
               <button
                 onClick={() => setActiveMenu('riwayat')}
-                className={`text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 ${
+                className={`text-base sm:text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 whitespace-nowrap ${
                   activeMenu === 'riwayat' ? 'border-b-2 border-sky-400' : 'border-b-2 border-transparent'
                 }`}>
                 Riwayat Transaksi
@@ -610,10 +701,10 @@ ${companyInfo.name}`
         </nav>
       </div>
 
-      <main className="flex-grow flex flex-col bg-black/20 rounded-lg p-6 sm:p-8">
+      <main className="flex-grow flex flex-col bg-black/20 rounded-lg p-4 sm:p-8">
         {activeMenu === 'daftar' && (
           <div>
-            <h2 className="text-3xl font-semibold mb-6 text-center">Rekap Daftar Pelanggan</h2>
+            <h2 className="text-2xl sm:text-3xl font-semibold mb-6 text-center">Rekap Daftar Pelanggan</h2>
             
             {/* Filter Section */}
             <div className="flex flex-col sm:flex-row flex-wrap gap-4 mb-6 p-4 bg-white/5 rounded-lg items-center">
@@ -639,23 +730,28 @@ ${companyInfo.name}`
                 onClick={() => setIsListVisible(!isListVisible)}
                 className="w-full sm:w-auto py-2 px-5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-sky-500 transition-colors"
               >
-                {isListVisible ? 'Sembunyikan Daftar' : 'Tampilkan Daftar'}
+                {isListVisible ? 'Sembunyikan' : 'Tampilkan'}
               </button>
                <button
                   onClick={handleNewBillingCycle}
                   className="w-full sm:w-auto py-2 px-5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-red-500 transition-colors"
                 >
-                  Mulai Siklus Tagihan Baru
+                  Siklus Tagihan Baru
                 </button>
             </div>
             
-            {isListVisible && renderCustomerList()}
+            {isListVisible && (
+              <>
+                {renderCustomerList()}
+                {renderCustomerTable()}
+              </>
+            )}
 
           </div>
         )}
         {activeMenu === 'input' && (
           <div>
-            <h2 className="text-3xl font-semibold mb-6 text-center">{editingCustomer ? 'Edit Data Pelanggan' : 'Formulir Pelanggan Baru'}</h2>
+            <h2 className="text-2xl sm:text-3xl font-semibold mb-6 text-center">{editingCustomer ? 'Edit Data Pelanggan' : 'Formulir Pelanggan Baru'}</h2>
             <form onSubmit={handleCustomerFormSubmit} className="space-y-4 max-w-xl mx-auto">
               <div>
                 <label htmlFor="nama" className="block text-sm font-medium text-gray-300 mb-1">Nama Pelanggan</label>
@@ -742,7 +838,7 @@ ${companyInfo.name}`
         )}
         {activeMenu === 'keuangan' && (
           <div>
-            <h2 className="text-3xl font-semibold mb-6 text-center">{editingEntry ? 'Edit Catatan Keuangan' : 'Formulir Catatan Keuangan'}</h2>
+            <h2 className="text-2xl sm:text-3xl font-semibold mb-6 text-center">{editingEntry ? 'Edit Catatan Keuangan' : 'Formulir Catatan Keuangan'}</h2>
             <form onSubmit={handleFinanceFormSubmit} className="space-y-4 max-w-xl mx-auto">
               <div>
                 <label htmlFor="deskripsi" className="block text-sm font-medium text-gray-300 mb-1">Deskripsi</label>
@@ -827,7 +923,7 @@ ${companyInfo.name}`
         )}
         {activeMenu === 'riwayat' && (
           <div>
-            <h2 className="text-3xl font-semibold mb-6 text-center">Riwayat Transaksi Keuangan</h2>
+            <h2 className="text-2xl sm:text-3xl font-semibold mb-6 text-center">Riwayat Transaksi Keuangan</h2>
             {renderFinanceHistory()}
           </div>
         )}

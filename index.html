@@ -18,6 +18,12 @@
       .bg-animated {
         animation: subtle-zoom 40s ease-in-out infinite;
       }
+      /* Added for smoother text rendering */
+      html, body {
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
     </style>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
   <script type="importmap">

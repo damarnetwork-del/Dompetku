@@ -285,13 +285,13 @@ Hormat kami,
                 </button>
             </div>
             
-            <main className="flex-grow flex flex-col bg-black/20 rounded-lg p-6 sm:p-8">
+            <main className="flex-grow flex flex-col bg-black/20 rounded-lg p-4 sm:p-8">
                 <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-                    <h2 className="text-3xl font-semibold">Buat Invoice Baru</h2>
-                    <div className="flex flex-wrap justify-end gap-2">
+                    <h2 className="text-2xl sm:text-3xl font-semibold text-center sm:text-left">Buat Invoice Baru</h2>
+                    <div className="grid grid-cols-2 sm:flex sm:flex-wrap justify-end gap-2 w-full sm:w-auto">
                          <button
                             onClick={handleClearForm}
-                            className="py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-yellow-500 transition-colors"
+                            className="py-2 px-3 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-yellow-500 transition-colors"
                             aria-label="Bersihkan Formulir"
                         >
                             <span>Bersihkan</span>
@@ -299,16 +299,16 @@ Hormat kami,
                         <button
                             onClick={handleDownloadPDF}
                             disabled={!recipient || items.length === 0 || calculateGrandTotal() <= 0}
-                            className="flex items-center gap-2 py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-green-500 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
+                            className="flex items-center justify-center gap-2 py-2 px-3 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-green-500 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
                             aria-label="Unduh Invoice sebagai PDF"
                         >
                             <DownloadIcon className="w-5 h-5"/>
-                            <span>Unduh PDF</span>
+                            <span className="hidden sm:inline">Unduh PDF</span>
                         </button>
                         <button
                             onClick={handleSendWhatsApp}
                             disabled={!recipient || !recipientPhone || items.length === 0 || calculateGrandTotal() <= 0}
-                            className="flex items-center gap-2 py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-teal-500 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
+                            className="col-span-2 flex items-center justify-center gap-2 py-2 px-3 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-teal-500 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
                             aria-label="Kirim Invoice via WhatsApp"
                         >
                             <WhatsappIcon className="w-5 h-5"/>
@@ -346,34 +346,45 @@ Hormat kami,
 
 
                     {/* Items Header */}
-                    <div className="hidden md:grid grid-cols-12 gap-4 items-center px-2 py-1 text-xs text-white uppercase">
-                        <div className="col-span-6">Deskripsi</div>
-                        <div className="col-span-2 text-right">Qty</div>
-                        <div className="col-span-2 text-right">Harga (Rp)</div>
-                        <div className="col-span-2 text-right">Total (Rp)</div>
+                    <div className="hidden md:grid md:grid-cols-12 gap-4 items-center px-2 py-1 text-xs text-white uppercase">
+                        <div className="md:col-span-6">Deskripsi</div>
+                        <div className="md:col-span-2 text-right">Qty</div>
+                        <div className="md:col-span-2 text-right">Harga (Rp)</div>
+                        <div className="md:col-span-2 text-right">Total (Rp)</div>
                     </div>
 
                     {/* Items List */}
                     <div className="space-y-4">
                         {items.map((item, index) => (
-                            <div key={item.id} className="grid grid-cols-12 gap-4 items-center bg-white/5 p-3 rounded-lg">
-                                <div className="col-span-12 md:col-span-6">
+                            <div key={item.id} className="bg-white/5 p-3 rounded-lg flex flex-col gap-2 md:grid md:grid-cols-12 md:gap-4 md:items-center">
+                                <div className="md:col-span-6">
                                     <label className="block text-xs font-medium text-gray-400 mb-1 md:hidden">Deskripsi</label>
                                     <textarea value={item.description} onChange={e => handleItemChange(index, 'description', e.target.value)} placeholder="Deskripsi item/layanan" className="w-full input-style" rows={2}></textarea>
                                 </div>
-                                <div className="col-span-4 md:col-span-2">
-                                     <label className="block text-xs font-medium text-gray-400 mb-1 md:hidden">Qty</label>
-                                    <input type="number" value={item.qty} onChange={e => handleItemChange(index, 'qty', e.target.value)} placeholder="1" className="w-full input-style text-right"/>
+                                
+                                <div className="grid grid-cols-2 gap-2 md:col-span-4 md:grid-cols-2 md:gap-4">
+                                  <div className="">
+                                      <label className="block text-xs font-medium text-gray-400 mb-1 md:hidden">Qty</label>
+                                      <input type="number" value={item.qty} onChange={e => handleItemChange(index, 'qty', e.target.value)} placeholder="1" className="w-full input-style text-right"/>
+                                  </div>
+                                  <div className="">
+                                      <label className="block text-xs font-medium text-gray-400 mb-1 md:hidden">Harga</label>
+                                      <input type="number" value={item.price} onChange={e => handleItemChange(index, 'price', e.target.value)} placeholder="0" className="w-full input-style text-right"/>
+                                  </div>
                                 </div>
-                                <div className="col-span-8 md:col-span-2">
-                                     <label className="block text-xs font-medium text-gray-400 mb-1 md:hidden">Harga</label>
-                                    <input type="number" value={item.price} onChange={e => handleItemChange(index, 'price', e.target.value)} placeholder="0" className="w-full input-style text-right"/>
+
+                                <div className="md:col-span-2 flex items-center justify-between mt-2 pt-2 border-t border-gray-700 md:border-none md:pt-0 md:mt-0">
+                                    <div className='flex flex-col items-start md:items-end w-full'>
+                                      <span className="md:hidden text-xs text-gray-400">Total:</span>
+                                      <span className="font-semibold text-lg md:text-base">Rp {(item.qty * item.price).toLocaleString('id-ID')}</span>
+                                    </div>
+                                    <div className="ml-4 md:ml-0 md:hidden">
+                                        <button onClick={() => removeItem(item.id)} className="text-red-400 hover:text-red-300 transition-colors font-bold text-2xl">&times;</button>
+                                    </div>
                                 </div>
-                                <div className="col-span-10 md:col-span-1 flex items-center justify-end font-semibold">
-                                    <span className="md:hidden text-xs text-gray-400 mr-2">Total:</span> Rp {(item.qty * item.price).toLocaleString('id-ID')}
-                                </div>
-                                <div className="col-span-2 md:col-span-1 flex justify-end">
-                                    <button onClick={() => removeItem(item.id)} className="text-red-400 hover:text-red-300 transition-colors font-bold">&times;</button>
+
+                                 <div className="hidden md:flex md:col-span-1 justify-end">
+                                    <button onClick={() => removeItem(item.id)} className="text-red-400 hover:text-red-300 transition-colors font-bold text-xl">&times;</button>
                                 </div>
                             </div>
                         ))}
@@ -381,10 +392,10 @@ Hormat kami,
 
                      {/* Add Item Button & Grand Total */}
                     <div className="flex flex-col sm:flex-row justify-between items-center mt-6 gap-4">
-                        <button onClick={addItem} className="py-2 px-4 border border-sky-500 rounded-lg text-sm font-medium text-sky-300 hover:bg-sky-500/20 focus:outline-none transition-colors">
+                        <button onClick={addItem} className="w-full sm:w-auto py-2 px-4 border border-sky-500 rounded-lg text-sm font-medium text-sky-300 hover:bg-sky-500/20 focus:outline-none transition-colors">
                             + Tambah Baris
                         </button>
-                        <div className="text-right">
+                        <div className="text-right w-full sm:w-auto bg-white/5 p-4 rounded-lg">
                             <p className="text-gray-400 font-medium">Grand Total</p>
                             <p className="text-2xl font-bold text-white">Rp {calculateGrandTotal().toLocaleString('id-ID')}</p>
                         </div>
