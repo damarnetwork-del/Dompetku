@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import ArrowLeftIcon from './icons/ArrowLeftIcon';
 import WhatsappIcon from './icons/WhatsappIcon';
@@ -396,22 +397,24 @@ ${companyInfo.name}`
     return matchesSearchTerm && matchesJenisLangganan;
   });
   
-  const filteredFinanceHistory = financeHistory.filter(entry => {
-    if (!filterStartDate && !filterEndDate) {
-        return true;
-    }
-    const entryDate = new Date(entry.tanggal);
-    const startDate = filterStartDate ? new Date(filterStartDate) : null;
-    const endDate = filterEndDate ? new Date(filterEndDate) : null;
+  const filteredFinanceHistory = financeHistory
+    .filter(entry => {
+      if (!filterStartDate && !filterEndDate) {
+          return true;
+      }
+      const entryDate = new Date(entry.tanggal);
+      const startDate = filterStartDate ? new Date(filterStartDate) : null;
+      const endDate = filterEndDate ? new Date(filterEndDate) : null;
 
-    if(startDate) startDate.setUTCHours(0,0,0,0);
-    if(endDate) endDate.setUTCHours(23,59,59,999);
-    
-    const isAfterStartDate = startDate ? entryDate >= startDate : true;
-    const isBeforeEndDate = endDate ? entryDate <= endDate : true;
-    
-    return isAfterStartDate && isBeforeEndDate;
-  });
+      if(startDate) startDate.setUTCHours(0,0,0,0);
+      if(endDate) endDate.setUTCHours(23,59,59,999);
+      
+      const isAfterStartDate = startDate ? entryDate >= startDate : true;
+      const isBeforeEndDate = endDate ? entryDate <= endDate : true;
+      
+      return isAfterStartDate && isBeforeEndDate;
+    })
+    .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
 
   const renderCustomerTable = () => {
     if (customers.length === 0) {

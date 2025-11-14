@@ -6,13 +6,15 @@ import EyeIcon from './icons/EyeIcon';
 import EyeOffIcon from './icons/EyeOffIcon';
 import NetworkIcon from './icons/NetworkIcon';
 import SpinnerIcon from './icons/SpinnerIcon';
+import { CompanyInfo } from './DashboardPage';
 
 
 interface LoginPageProps {
   onLoginSuccess: (username: string) => void;
+  companyInfo: CompanyInfo;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, companyInfo }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -41,9 +43,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     >
       <div className="relative z-10 w-full max-w-md p-8 space-y-6 bg-gray-900/40 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 animate-fade-in-slide-up">
         <div className="text-center">
-          <NetworkIcon className="w-16 h-16 mx-auto mb-4 text-sky-400" />
+          {companyInfo.logo ? (
+            <img src={companyInfo.logo} alt={`${companyInfo.name} Logo`} className="w-20 h-20 mx-auto mb-4 object-contain rounded-full bg-white/10 p-1 border border-white/20"/>
+          ) : (
+            <NetworkIcon className="w-16 h-16 mx-auto mb-4 text-sky-400" />
+          )}
           <h1 className="text-4xl font-bold text-white tracking-wider">Selamat Datang</h1>
-          <p className="mt-2 text-gray-300">Masuk untuk melanjutkan ke dasbor Anda</p>
+          <p className="mt-2 text-gray-300">Masuk untuk melanjutkan ke {companyInfo.name}</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && <p className="text-center text-sm text-red-400 bg-red-500/20 py-2 rounded-lg animate-error">{error}</p>}

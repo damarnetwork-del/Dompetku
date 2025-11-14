@@ -74,7 +74,7 @@ function App() {
             setCompanyInfo={setCompanyInfo}
           />
         ) : (
-          <LoginPage onLoginSuccess={handleLoginSuccess} />
+          <LoginPage onLoginSuccess={handleLoginSuccess} companyInfo={companyInfo} />
         )}
       </div>
 
