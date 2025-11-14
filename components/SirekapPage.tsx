@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import ArrowLeftIcon from './icons/ArrowLeftIcon';
 import WhatsappIcon from './icons/WhatsappIcon';
@@ -397,26 +396,24 @@ ${companyInfo.name}`
     return matchesSearchTerm && matchesJenisLangganan;
   });
   
-  const filteredFinanceHistory = financeHistory
-    .filter(entry => {
-      if (!filterStartDate && !filterEndDate) {
-          return true;
-      }
-      const entryDate = new Date(entry.tanggal);
-      const startDate = filterStartDate ? new Date(filterStartDate) : null;
-      const endDate = filterEndDate ? new Date(filterEndDate) : null;
+  const filteredFinanceHistory = financeHistory.filter(entry => {
+    if (!filterStartDate && !filterEndDate) {
+        return true;
+    }
+    const entryDate = new Date(entry.tanggal);
+    const startDate = filterStartDate ? new Date(filterStartDate) : null;
+    const endDate = filterEndDate ? new Date(filterEndDate) : null;
 
-      if(startDate) startDate.setUTCHours(0,0,0,0);
-      if(endDate) endDate.setUTCHours(23,59,59,999);
-      
-      const isAfterStartDate = startDate ? entryDate >= startDate : true;
-      const isBeforeEndDate = endDate ? entryDate <= endDate : true;
-      
-      return isAfterStartDate && isBeforeEndDate;
-    })
-    .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
+    if(startDate) startDate.setUTCHours(0,0,0,0);
+    if(endDate) endDate.setUTCHours(23,59,59,999);
+    
+    const isAfterStartDate = startDate ? entryDate >= startDate : true;
+    const isBeforeEndDate = endDate ? entryDate <= endDate : true;
+    
+    return isAfterStartDate && isBeforeEndDate;
+  });
 
-  const renderCustomerTable = () => {
+  const renderCustomerList = () => {
     if (customers.length === 0) {
       return (
         <div className="text-center text-gray-400 mt-8">
@@ -433,9 +430,68 @@ ${companyInfo.name}`
         </div>
       );
     }
-
+    
     return (
-      <div className="overflow-x-auto">
+      <div className="space-y-4 md:hidden">
+      {filteredCustomers.map((customer) => {
+        const totalTagihan = Number(customer.harga) + customer.tunggakan;
+        return (
+          <div key={customer.id} className="bg-white/5 p-4 rounded-lg shadow">
+            <div className="flex justify-between items-start">
+              <span className="font-bold text-lg text-white">{customer.nama}</span>
+              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                  customer.status === 'Lunas' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+              }`}>
+                  {customer.status}
+              </span>
+            </div>
+            <div className="mt-4 space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-gray-400">Harga</span><span>Rp {Number(customer.harga).toLocaleString('id-ID')}</span></div>
+              <div className="flex justify-between"><span className="text-gray-400">Tunggakan</span><span>Rp {customer.tunggakan.toLocaleString('id-ID')}</span></div>
+              <div className="flex justify-between font-bold text-base"><span className="text-gray-300">Total Tagihan</span><span>Rp {totalTagihan.toLocaleString('id-ID')}</span></div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-gray-700 flex justify-between items-center gap-2">
+              <div className="flex-1 flex gap-2">
+                 <button 
+                      onClick={() => handlePayment(customer)} 
+                      disabled={customer.status === 'Lunas'}
+                      className="flex-1 font-medium text-green-400 hover:text-green-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors text-xs py-2 px-2 rounded bg-green-500/10 hover:bg-green-500/20 disabled:bg-gray-500/10"
+                  >
+                      Bayar
+                  </button>
+                  <button 
+                      onClick={() => handleStartEditCustomer(customer)} 
+                      className="flex-1 font-medium text-blue-400 hover:text-blue-300 transition-colors text-xs py-2 px-2 rounded bg-blue-500/10 hover:bg-blue-500/20"
+                  >
+                      Edit
+                  </button>
+                  <button 
+                      onClick={() => handleDeleteCustomer(customer.id)} 
+                      className="flex-1 font-medium text-red-400 hover:text-red-300 transition-colors text-xs py-2 px-2 rounded bg-red-500/10 hover:bg-red-500/20"
+                  >
+                      Hapus
+                  </button>
+              </div>
+              {customer.status === 'Belum Lunas' && (
+                <button 
+                  onClick={() => handleSendWhatsApp(customer)} 
+                  className="font-medium text-teal-400 hover:text-teal-300 transition-colors p-2 rounded-full bg-teal-500/10 hover:bg-teal-500/20"
+                  title="Kirim Pengingat Tagihan WhatsApp"
+                >
+                  <WhatsappIcon className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+    )
+  }
+
+  const renderCustomerTable = () => {
+    return (
+      <div className="overflow-x-auto hidden md:block">
         <table className="min-w-full text-sm text-left text-gray-300">
           <thead className="text-xs text-white uppercase bg-white/10">
             <tr>
@@ -474,7 +530,7 @@ ${companyInfo.name}`
                 <td className="px-6 py-4 text-right">{Number(customer.harga).toLocaleString('id-ID')}</td>
                 <td className="px-6 py-4 text-right">{customer.tunggakan.toLocaleString('id-ID')}</td>
                 <td className="px-6 py-4 text-right font-bold">{totalTagihan.toLocaleString('id-ID')}</td>
-                <td className="px-6 py-4 text-center space-x-2 whitespace-nowrap">
+                <td className="px-6 py-4 text-center space-x-2">
                     <button 
                         onClick={() => handlePayment(customer)} 
                         disabled={customer.status === 'Lunas'}
@@ -774,7 +830,12 @@ ${companyInfo.name}`
                 </button>
             </div>
             
-            {isListVisible && renderCustomerTable()}
+            {isListVisible && (
+              <>
+                {renderCustomerList()}
+                {renderCustomerTable()}
+              </>
+            )}
 
           </div>
         )}
