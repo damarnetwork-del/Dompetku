@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import SirekapPage from './SirekapPage';
 import LaporanBulananPage from './LaporanBulananPage';
@@ -7,6 +8,11 @@ import KasCadanganPage from './KasCadanganPage'; // Import the new component
 import { ProfitShare } from './LaporanBulananPage';
 import * as Recharts from 'recharts';
 import SettingsIcon from './icons/SettingsIcon';
+import LogoutIcon from './icons/LogoutIcon';
+import SirekapIcon from './icons/SirekapIcon';
+import LaporanIcon from './icons/LaporanIcon';
+import InvoiceIcon from './icons/InvoiceIcon';
+import KasCadanganIcon from './icons/KasCadanganIcon';
 
 // Declare Swal to inform TypeScript about the global variable from the CDN script
 declare const Swal: any;
@@ -716,43 +722,87 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
     }
   };
 
-  return (
-    <div className="relative flex flex-col min-h-screen text-white p-4 sm:p-6 lg:p-8">
-        <div 
-            className="absolute inset-0 bg-cover bg-center bg-fixed" 
-            style={{ backgroundImage: "url('https://picsum.photos/1920/1080?random=2&grayscale&blur=2')", zIndex: -1 }}
-        ></div>
-        <div className="absolute inset-0 bg-gray-900/80 backdrop-blur-sm" style={{ zIndex: -1 }}></div>
+  const handleLogoutConfirm = () => {
+    Swal.fire({
+      title: 'Konfirmasi Keluar',
+      text: "Apakah Anda yakin ingin keluar dari sesi ini?",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Keluar',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      customClass: {
+        popup: '!bg-gray-800 !text-white !rounded-lg',
+        title: '!text-white',
+        htmlContainer: '!text-gray-300',
+        confirmButton: '!bg-red-600 hover:!bg-red-700',
+        cancelButton: '!bg-gray-600 hover:!bg-gray-700',
+      }
+    }).then((result: any) => {
+      if (result.isConfirmed) {
+        onLogout();
+      }
+    });
+  };
 
-      <header className="flex flex-col sm:flex-row justify-between items-center mb-8 pb-4 border-b border-gray-700">
-        <div className="text-center sm:text-left">
-          <h1 className="text-2xl sm:text-4xl font-bold tracking-wider">{getPageTitle()}</h1>
-          <p className="text-sm text-gray-400">Selamat datang kembali, {username}</p>
-        </div>
-        <div className="flex items-center gap-4 mt-4 sm:mt-0">
-          <button
-              onClick={handleSettingsClick}
-              className="p-2 text-gray-300 hover:text-white hover:bg-white/10 rounded-full transition-colors duration-300"
-              aria-label="Pengaturan"
-          >
-              <SettingsIcon className="w-6 h-6"/>
-          </button>
-          <button
-            onClick={onLogout}
-            className="py-2 px-5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-red-500 transition-colors"
-          >
-            Keluar
-          </button>
-        </div>
+  return (
+    <div className="flex flex-col min-h-screen text-white p-4 sm:p-6 lg:p-8">
+      <header className="flex items-center justify-between mb-8 pb-4 border-b border-gray-700">
+          <div className="flex-1">
+              <div className="flex items-center gap-2">
+                  <button
+                      onClick={handleSettingsClick}
+                      className="p-2 text-gray-300 hover:text-white hover:bg-white/10 rounded-full transition-colors duration-300"
+                      aria-label="Pengaturan"
+                  >
+                      <SettingsIcon className="w-6 h-6"/>
+                  </button>
+                  <button
+                    onClick={handleLogoutConfirm}
+                    className="flex items-center gap-2 py-2 px-4 border border-red-500/50 rounded-lg text-sm font-medium text-red-300 bg-red-500/10 hover:bg-red-500/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-red-500 transition-colors"
+                  >
+                    <LogoutIcon className="w-5 h-5" />
+                    <span className="hidden sm:inline">Keluar</span>
+                  </button>
+              </div>
+          </div>
+          <div className="flex-1 text-center">
+              <h1 className="text-2xl sm:text-4xl font-bold tracking-wider">{getPageTitle()}</h1>
+          </div>
+          <div className="flex-1 text-right">
+            <p className="text-sm text-gray-400">Selamat datang, {username}</p>
+          </div>
       </header>
+
 
       {activePage === 'dashboard' && (
         <nav className="mb-8">
-            <ul className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <li><button onClick={() => setActivePage('sirekap')} className="nav-button bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 w-full">Sirekap</button></li>
-                <li><button onClick={() => setActivePage('laporan')} className="nav-button bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 w-full">Laporan Bulanan</button></li>
-                <li><button onClick={() => setActivePage('invoice')} className="nav-button bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 w-full">Buat Invoice</button></li>
-                <li><button onClick={() => setActivePage('kasCadangan')} className="nav-button bg-slate-500/20 hover:bg-slate-500/30 text-slate-300 w-full">Kas Cadangan</button></li>
+            <ul className="flex items-center justify-center gap-2 sm:gap-3">
+                <li>
+                  <button onClick={() => setActivePage('sirekap')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 transition-transform transform hover:scale-105">
+                    <SirekapIcon className="w-4 h-4"/>
+                    <span>Sirekap</span>
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => setActivePage('laporan')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 transition-transform transform hover:scale-105">
+                    <LaporanIcon className="w-4 h-4"/>
+                    <span>Laporan</span>
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => setActivePage('invoice')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 transition-transform transform hover:scale-105">
+                    <InvoiceIcon className="w-4 h-4"/>
+                    <span>Invoice</span>
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => setActivePage('kasCadangan')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-500/20 hover:bg-slate-500/30 text-slate-300 transition-transform transform hover:scale-105">
+                    <KasCadanganIcon className="w-4 h-4"/>
+                    <span>Kas</span>
+                  </button>
+                </li>
             </ul>
         </nav>
       )}
@@ -761,18 +811,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
         {renderActivePage()}
       </main>
       <style>{`
-        .nav-button {
-            padding: 1rem 1.5rem;
-            border-radius: 0.75rem;
-            font-size: 1.125rem;
-            font-weight: 600;
-            text-align: center;
-            transition: all 0.3s ease;
-            transform: translateY(0);
-        }
         .nav-button:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
       `}</style>
     </div>

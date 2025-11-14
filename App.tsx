@@ -52,17 +52,32 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900">
-      {loggedInUser ? (
-        <DashboardPage
-          onLogout={handleLogout}
-          username={loggedInUser}
-          companyInfo={companyInfo}
-          setCompanyInfo={setCompanyInfo}
-        />
-      ) : (
-        <LoginPage onLoginSuccess={handleLoginSuccess} />
-      )}
+    <div className="min-h-screen">
+      <video 
+        autoPlay 
+        loop 
+        muted 
+        playsInline
+        className="video-bg"
+        poster="https://picsum.photos/1920/1080?random=3&grayscale&blur=3"
+      >
+        <source src="https://cdn.coverr.co/videos/coverr-a-futuristic-digital-scene-6242/1080p.mp4" type="video/mp4" />
+      </video>
+      <div className="absolute inset-0 bg-gray-900/80 backdrop-blur-sm"></div>
+      
+      <div className="relative">
+        {loggedInUser ? (
+          <DashboardPage
+            onLogout={handleLogout}
+            username={loggedInUser}
+            companyInfo={companyInfo}
+            setCompanyInfo={setCompanyInfo}
+          />
+        ) : (
+          <LoginPage onLoginSuccess={handleLoginSuccess} />
+        )}
+      </div>
+
       <footer className="fixed bottom-0 left-0 right-0 p-4 text-center text-gray-400 text-sm bg-gray-900/50 backdrop-blur-sm z-50">
         Hak Cipta © {new Date().getFullYear()} {companyInfo.name}. Seluruh hak cipta dilindungi.
       </footer>
