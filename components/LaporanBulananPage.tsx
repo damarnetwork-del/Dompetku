@@ -35,9 +35,10 @@ interface LaporanBulananPageProps {
   profitSharingData: ProfitShare[];
   setFinanceHistory: React.Dispatch<React.SetStateAction<FinanceEntry[]>>;
   setProfitSharingData: React.Dispatch<React.SetStateAction<ProfitShare[]>>;
+  kasCadangan: number;
 }
 
-const LaporanBulananPage: React.FC<LaporanBulananPageProps> = ({ onBack, financeHistory, companyInfo, profitSharingData, setFinanceHistory, setProfitSharingData }) => {
+const LaporanBulananPage: React.FC<LaporanBulananPageProps> = ({ onBack, financeHistory, companyInfo, profitSharingData, setFinanceHistory, setProfitSharingData, kasCadangan }) => {
   const [members, setMembers] = useState<string[]>([]);
   const [newMemberName, setNewMemberName] = useState('');
 
@@ -222,6 +223,83 @@ const LaporanBulananPage: React.FC<LaporanBulananPageProps> = ({ onBack, finance
     
     let finalY = (doc as any).lastAutoTable.finalY;
 
+    // --- NEW: Detailed Transaction History Table ---
+    if (financeHistory.length > 0) {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Rincian Transaksi Keseluruhan', 15, finalY + 15);
+
+        const sortedHistory = [...financeHistory].sort((a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime());
+        
+        const historyTableData = sortedHistory.map(entry => {
+            const formattedDate = new Date(entry.tanggal).toLocaleDateString('id-ID', {
+                timeZone: 'UTC', day: '2-digit', month: 'short', year: 'numeric'
+            });
+            const nominalDisplay = `${entry.kategori === 'Pemasukan' ? '+' : '-'} ${entry.nominal.toLocaleString('id-ID')}`;
+            return [formattedDate, entry.deskripsi, entry.kategori, entry.metode, nominalDisplay];
+        });
+
+        (doc as any).autoTable({
+            head: [['Tanggal', 'Deskripsi', 'Kategori', 'Metode', 'Nominal (Rp)']],
+            body: historyTableData,
+            startY: finalY + 20,
+            headStyles: { fillColor: [31, 41, 55] },
+            theme: 'grid',
+            didDrawCell: (data: any) => {
+                // Right-align the 'Nominal' column
+                if (data.section === 'body' && data.column.index === 4) {
+                    data.cell.styles.halign = 'right';
+                }
+            }
+        });
+        finalY = (doc as any).lastAutoTable.finalY;
+    }
+
+    // --- NEW: Transaction Summary by Method ---
+    const pemasukanTunai = financeHistory.filter(e => e.kategori === 'Pemasukan' && e.metode === 'Tunai').reduce((sum, e) => sum + e.nominal, 0);
+    const pemasukanTransfer = financeHistory.filter(e => e.kategori === 'Pemasukan' && e.metode === 'Transfer').reduce((sum, e) => sum + e.nominal, 0);
+    const totalPemasukan = pemasukanTunai + pemasukanTransfer;
+    const pengeluaranTunai = financeHistory.filter(e => e.kategori === 'Pengeluaran' && e.metode === 'Tunai').reduce((sum, e) => sum + e.nominal, 0);
+    const pengeluaranTransfer = financeHistory.filter(e => e.kategori === 'Pengeluaran' && e.metode === 'Transfer').reduce((sum, e) => sum + e.nominal, 0);
+    const totalPengeluaran = pengeluaranTunai + pengeluaranTransfer;
+    const saldoAkhirKeseluruhan = totalPemasukan - totalPengeluaran;
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Rekapitulasi Total Transaksi', 15, finalY + 15);
+
+    const summaryTableData = [
+        ['Pemasukan (Tunai)', pemasukanTunai.toLocaleString('id-ID')],
+        ['Pemasukan (Transfer)', pemasukanTransfer.toLocaleString('id-ID')],
+        ['Total Pemasukan', totalPemasukan.toLocaleString('id-ID')],
+        ['Pengeluaran (Tunai)', pengeluaranTunai.toLocaleString('id-ID')],
+        ['Pengeluaran (Transfer)', pengeluaranTransfer.toLocaleString('id-ID')],
+        ['Total Pengeluaran', totalPengeluaran.toLocaleString('id-ID')],
+        ['Saldo Akhir Keseluruhan', saldoAkhirKeseluruhan.toLocaleString('id-ID')],
+        ['Kas Cadangan', kasCadangan.toLocaleString('id-ID')],
+    ];
+    
+    (doc as any).autoTable({
+        head: [['Deskripsi', 'Jumlah (Rp)']],
+        body: summaryTableData,
+        startY: finalY + 20,
+        headStyles: { fillColor: [31, 41, 55] },
+        theme: 'grid',
+        didDrawCell: (data: any) => {
+            if (data.section === 'body') {
+                data.cell.styles.halign = 'right';
+                // Make headers bold
+                if (data.row.index === 2 || data.row.index === 5 || data.row.index === 6 || data.row.index === 7) {
+                    data.cell.styles.fontStyle = 'bold';
+                }
+            }
+        },
+        columnStyles: {
+            0: { halign: 'left', fontStyle: 'bold' }
+        }
+    });
+    finalY = (doc as any).lastAutoTable.finalY;
+
     // Profit Sharing Table (if data exists)
     if (profitSharingData && profitSharingData.length > 0) {
         doc.setFontSize(12);
@@ -338,11 +416,19 @@ const LaporanBulananPage: React.FC<LaporanBulananPageProps> = ({ onBack, finance
         <div>
            <h2 className="text-3xl font-semibold mb-6 text-center">Formulir Bagi Hasil</h2>
         
-            <div className="bg-sky-500/10 p-4 rounded-lg text-center mb-8">
-                <p className="text-sm text-sky-400 font-semibold">Saldo Akhir Tersedia untuk Dibagi</p>
-                <p className={`text-3xl font-bold ${saldoAkhir >= 0 ? 'text-white' : 'text-red-400'}`}>
-                  Rp {saldoAkhir.toLocaleString('id-ID')}
-                </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-8">
+                <div className="bg-sky-500/10 p-4 rounded-lg text-center">
+                    <p className="text-sm text-sky-400 font-semibold">Saldo Akhir Tersedia untuk Dibagi</p>
+                    <p className={`text-3xl font-bold ${saldoAkhir >= 0 ? 'text-white' : 'text-red-400'}`}>
+                      Rp {saldoAkhir.toLocaleString('id-ID')}
+                    </p>
+                </div>
+                 <div className="bg-slate-500/10 p-4 rounded-lg text-center">
+                    <p className="text-sm text-slate-400 font-semibold">Kas Cadangan Tersimpan</p>
+                    <p className="text-3xl font-bold text-white">
+                      Rp {kasCadangan.toLocaleString('id-ID')}
+                    </p>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

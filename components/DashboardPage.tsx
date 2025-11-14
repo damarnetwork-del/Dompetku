@@ -1,8 +1,8 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import SirekapPage from './SirekapPage';
 import LaporanBulananPage from './LaporanBulananPage';
-import InvoicePage from './InvoicePage'; // Import the new InvoicePage
+import InvoicePage from './InvoicePage';
+import KasCadanganPage from './KasCadanganPage'; // Import the new component
 // FIX: Import ProfitShare to break circular dependency
 import { ProfitShare } from './LaporanBulananPage';
 import * as Recharts from 'recharts';
@@ -56,7 +56,7 @@ export interface CompanyInfo {
 }
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, companyInfo, setCompanyInfo }) => {
-  const [activePage, setActivePage] = useState<'dashboard' | 'sirekap' | 'laporan' | 'invoice'>('dashboard');
+  const [activePage, setActivePage] = useState<'dashboard' | 'sirekap' | 'laporan' | 'invoice' | 'kasCadangan'>('dashboard');
 
   const [customers, setCustomers] = useState<Customer[]>(() => {
     try {
@@ -111,6 +111,30 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
           console.error("Gagal menyimpan data bagi hasil:", e);
       }
   }, [profitSharingData]);
+    
+  const [kasCadangan, setKasCadangan] = useState<number>(() => {
+    try {
+        const saved = localStorage.getItem('sidompet_kasCadangan');
+        return saved ? JSON.parse(saved) : 0;
+    } catch (e) {
+        console.error("Gagal memuat kas cadangan dari penyimpanan:", e);
+        return 0;
+    }
+  });
+
+  useEffect(() => {
+    try {
+        localStorage.setItem('sidompet_kasCadangan', JSON.stringify(kasCadangan));
+    } catch (e) {
+        console.error("Gagal menyimpan kas cadangan:", e);
+    }
+  }, [kasCadangan]);
+    
+  const saldoAkhir = useMemo(() => {
+    const totalPemasukan = financeHistory.filter(e => e.kategori === 'Pemasukan').reduce((acc, e) => acc + e.nominal, 0);
+    const totalPengeluaran = financeHistory.filter(e => e.kategori === 'Pengeluaran').reduce((acc, e) => acc + e.nominal, 0);
+    return totalPemasukan - totalPengeluaran;
+  }, [financeHistory]);
 
   const handlePaymentNotification = async (customer: { nama: string; noHp: string; }, amount: number) => {
     if (!companyInfo.waGatewayUrl || !companyInfo.waGatewayToken) {
@@ -164,11 +188,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
             companyInfo,
             customers,
             financeHistory,
+            kasCadangan, // Add kasCadangan to backup
         };
     } else {
         backupData = {
             customers,
             financeHistory,
+            kasCadangan, // Add kasCadangan to backup
         };
     }
 
@@ -233,6 +259,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
                     }
                     setCustomers(parsedData.customers);
                     setFinanceHistory(parsedData.financeHistory);
+                    if (parsedData.kasCadangan) {
+                        setKasCadangan(parsedData.kasCadangan);
+                    }
                     
                     Swal.fire({
                         title: 'Restore Berhasil!',
@@ -440,6 +469,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
         return 'Laporan Bulanan';
       case 'invoice':
         return 'Invoice';
+      case 'kasCadangan':
+        return 'Kas Cadangan';
       default:
         return 'Dasbor';
     }
@@ -477,8 +508,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
       .filter(e => e.metode === 'Transfer')
       .reduce((acc, e) => acc + e.nominal, 0);
     
-    const saldoAkhir = totalPemasukan - totalPengeluaran;
-
     // --- New Categorized Data Processing ---
 
     const getCategory = (entry: FinanceEntry): string => {
@@ -565,7 +594,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
        <div className="bg-black/20 rounded-lg p-4 sm:p-8 w-full flex-grow">
           <h2 className="text-2xl sm:text-3xl font-semibold mb-6 text-center">Ringkasan Keuangan</h2>
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 text-center">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 text-center">
               <div className="bg-green-500/10 p-4 rounded-lg">
                   <p className="text-sm text-green-400 font-semibold">Total Pemasukan</p>
                   <p className="text-xl sm:text-2xl font-bold text-white">Rp {totalPemasukan.toLocaleString('id-ID')}</p>
@@ -586,6 +615,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
                   <p className="text-sm text-sky-400 font-semibold">Saldo Akhir</p>
                   <p className={`text-xl sm:text-2xl font-bold ${saldoAkhir >= 0 ? 'text-white' : 'text-red-400'}`}>
                     Rp {saldoAkhir.toLocaleString('id-ID')}
+                  </p>
+              </div>
+              <div className="bg-slate-500/10 p-4 rounded-lg">
+                  <p className="text-sm text-slate-400 font-semibold">Kas Cadangan</p>
+                  <p className="text-xl sm:text-2xl font-bold text-white">
+                    Rp {kasCadangan.toLocaleString('id-ID')}
                   </p>
               </div>
           </div>
@@ -700,11 +735,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
             profitSharingData={profitSharingData}
             setFinanceHistory={setFinanceHistory}
             setProfitSharingData={setProfitSharingData}
+            kasCadangan={kasCadangan}
           />
         ) : activePage === 'invoice' ? (
           <InvoicePage
             onBack={handleBack}
             companyInfo={companyInfo}
+          />
+        ) : activePage === 'kasCadangan' ? (
+          <KasCadanganPage
+            onBack={handleBack}
+            kasCadangan={kasCadangan}
+            setKasCadangan={setKasCadangan}
+            saldoAkhir={saldoAkhir}
+            financeHistory={financeHistory}
+            setFinanceHistory={setFinanceHistory}
           />
         ) : (
           <>
@@ -734,6 +779,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
                       onClick={(e) => { e.preventDefault(); setActivePage('invoice'); }}
                       className="text-base sm:text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 border-b-2 border-transparent hover:border-sky-400 whitespace-nowrap">
                       Invoice
+                    </a>
+                  </li>
+                  <li>
+                    <a 
+                      href="#" 
+                      onClick={(e) => { e.preventDefault(); setActivePage('kasCadangan'); }}
+                      className="text-base sm:text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 border-b-2 border-transparent hover:border-sky-400 whitespace-nowrap">
+                      Kas Cadangan
                     </a>
                   </li>
                 </ul>
