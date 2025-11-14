@@ -181,34 +181,34 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
     
   const handleBackup = (type: 'all' | 'data') => {
     let backupData: any = {};
-    let fileName = `sidompet_backup_${type}`;
+    let fileNamePrefix = `sidompet_backup_${type}`;
 
     if (type === 'all') {
         backupData = {
             companyInfo,
             customers,
             financeHistory,
-            kasCadangan, // Add kasCadangan to backup
+            kasCadangan,
         };
     } else {
         backupData = {
             customers,
             financeHistory,
-            kasCadangan, // Add kasCadangan to backup
+            kasCadangan,
         };
     }
 
     const jsonString = JSON.stringify(backupData, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
+    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonString);
+    
     const link = document.createElement('a');
-    link.href = url;
+    link.href = dataUri;
     const date = new Date().toISOString().split('T')[0];
-    link.download = `${fileName}_${date}.json`;
+    link.download = `${fileNamePrefix}_${date}.json`;
+    
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(url);
 
     Swal.fire({
         title: 'Backup Berhasil',
@@ -223,8 +223,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
     });
   };
     
-  const handleRestore = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleRestore = (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
@@ -259,7 +260,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
                     }
                     setCustomers(parsedData.customers);
                     setFinanceHistory(parsedData.financeHistory);
-                    if (parsedData.kasCadangan) {
+                    if (parsedData.kasCadangan !== undefined) { // Check for undefined to allow 0
                         setKasCadangan(parsedData.kasCadangan);
                     }
                     
@@ -288,7 +289,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
             });
         } finally {
             // Reset the file input so the same file can be selected again
-            event.target.value = '';
+            if (target) {
+                target.value = '';
+            }
         }
     };
     reader.readAsText(file);
@@ -394,7 +397,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
         if (backupDataBtn) backupDataBtn.onclick = () => handleBackup('data');
 
         const restoreInput = document.getElementById('swal-restore-file') as HTMLInputElement;
-        if (restoreInput) restoreInput.onchange = (e) => handleRestore(e as any);
+        if (restoreInput) restoreInput.onchange = handleRestore;
       },
       preConfirm: () => {
         const name = (document.getElementById('swal-company-name') as HTMLInputElement).value;
@@ -637,170 +640,141 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
                         bottom: 5,
                     }}
                 >
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                    <XAxis dataKey="date" stroke="#9ca3af" tick={{ fontSize: 10 }} />
-                    <YAxis 
-                        yAxisId="left" 
-                        orientation="left" 
-                        stroke="#9ca3af"
-                        tickFormatter={formatYAxis}
-                        width={45}
-                        tick={{ fontSize: 10 }}
-                    />
-                     <YAxis 
-                        yAxisId="right" 
-                        orientation="right" 
-                        stroke="#38bdf8"
-                        tickFormatter={formatYAxis}
-                        width={45}
-                        tick={{ fontSize: 10 }}
-                    />
-                    <Tooltip
-                        cursor={{ fill: 'rgba(107, 114, 128, 0.1)' }}
-                        contentStyle={{
-                            backgroundColor: 'rgba(31, 41, 55, 0.9)',
-                            borderColor: '#4b5563',
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)"/>
+                    <XAxis dataKey="date" stroke="#9ca3af" tick={{ fontSize: 12 }} />
+                    <YAxis yAxisId="left" stroke="#9ca3af" tick={{ fontSize: 12 }} tickFormatter={formatYAxis} />
+                    <YAxis yAxisId="right" orientation="right" stroke="#0ea5e9" tick={{ fontSize: 12 }} tickFormatter={formatYAxis} />
+                    <Tooltip 
+                        contentStyle={{ 
+                            backgroundColor: 'rgba(30, 41, 59, 0.9)', 
+                            borderColor: '#334155',
                             borderRadius: '0.5rem',
                         }}
-                        labelStyle={{ color: '#d1d5db', fontWeight: 'bold' }}
+                        labelStyle={{ color: '#e2e8f0' }}
                         formatter={(value: number, name: string) => [`Rp ${value.toLocaleString('id-ID')}`, name]}
                     />
-                    <Legend wrapperStyle={{ color: '#d1d5db', paddingTop: '10px', fontSize: '12px' }} />
+                    <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '20px' }}/>
                     
-                    {Array.from(allIncomeCategories).map(cat => (
-                        <Bar key={cat} yAxisId="left" dataKey={cat} stackId="pemasukan" fill={categoryColors[cat] || '#22c55e'} />
+                    {/* Stacked Bars for Income */}
+                    {[...allIncomeCategories].map(cat => (
+                        <Bar key={cat} yAxisId="left" dataKey={cat} stackId="a" fill={categoryColors[cat] || '#16a34a'} barSize={20} />
                     ))}
 
-                    {Array.from(allExpenseCategories).map(cat => (
-                        <Bar key={cat} yAxisId="left" dataKey={cat} stackId="pengeluaran" fill={categoryColors[cat] || '#ef4444'} />
+                    {/* Stacked Bars for Expense */}
+                    {[...allExpenseCategories].map(cat => (
+                         <Bar key={cat} yAxisId="left" dataKey={cat} stackId="a" fill={categoryColors[cat] || '#dc2626'} barSize={20} />
                     ))}
 
-                    <Line yAxisId="right" type="monotone" dataKey="Saldo" stroke="#38bdf8" strokeWidth={2} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                    {/* Line for Cumulative Balance */}
+                    <Line yAxisId="right" type="monotone" dataKey="Saldo" stroke="#0ea5e9" strokeWidth={2} dot={{ r: 4, fill: '#0ea5e9' }} activeDot={{ r: 6 }} />
                 </ComposedChart>
             </ResponsiveContainer>
+          </div>
         </div>
-      </div>
     );
   }
 
+  const renderActivePage = () => {
+    switch (activePage) {
+      case 'sirekap':
+        return <SirekapPage 
+                    onBack={handleBack} 
+                    customers={customers}
+                    setCustomers={setCustomers}
+                    financeHistory={financeHistory}
+                    setFinanceHistory={setFinanceHistory}
+                    onPaymentSuccess={handlePaymentNotification}
+                    companyInfo={companyInfo}
+                />;
+      case 'laporan':
+        return <LaporanBulananPage 
+                    onBack={handleBack} 
+                    financeHistory={financeHistory}
+                    companyInfo={companyInfo}
+                    profitSharingData={profitSharingData}
+                    setProfitSharingData={setProfitSharingData}
+                    setFinanceHistory={setFinanceHistory}
+                    kasCadangan={kasCadangan}
+                />;
+       case 'invoice':
+        return <InvoicePage onBack={handleBack} companyInfo={companyInfo} />;
+      case 'kasCadangan':
+        return <KasCadanganPage 
+                    onBack={handleBack} 
+                    kasCadangan={kasCadangan} 
+                    setKasCadangan={setKasCadangan}
+                    saldoAkhir={saldoAkhir}
+                    setFinanceHistory={setFinanceHistory}
+                    financeHistory={financeHistory}
+                />;
+      default:
+        return (
+          <div className="flex-grow flex flex-col justify-center">
+            {renderFinancialVisualisation()}
+          </div>
+        );
+    }
+  };
+
   return (
-    <div
-      className="relative min-h-screen bg-cover bg-center bg-no-repeat"
-      style={{ backgroundImage: "url('https://picsum.photos/1920/1000?random=1&grayscale&blur=3')" }}
-    >
-      <div className="absolute inset-0 bg-black opacity-50"></div>
-      
-      {/* Full-screen content container */}
-      <div className="relative z-10 w-full min-h-screen flex flex-col p-4 sm:p-8 text-white">
-        
-        {/* Header Section */}
-        <header className="flex flex-col sm:flex-row justify-between items-start mb-8 gap-4 sm:gap-0">
-          <div className="flex items-center gap-4">
-            {companyInfo.logo && <img src={companyInfo.logo} alt="Company Logo" className="h-10 w-10 sm:h-12 sm:w-12 object-contain" />}
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-wider">{getPageTitle()}</h1>
-          </div>
-          <div className="flex items-center gap-2 self-end">
-            <button
+    <div className="relative flex flex-col min-h-screen text-white p-4 sm:p-6 lg:p-8">
+        <div 
+            className="absolute inset-0 bg-cover bg-center bg-fixed" 
+            style={{ backgroundImage: "url('https://picsum.photos/1920/1080?random=2&grayscale&blur=2')", zIndex: -1 }}
+        ></div>
+        <div className="absolute inset-0 bg-gray-900/80 backdrop-blur-sm" style={{ zIndex: -1 }}></div>
+
+      <header className="flex flex-col sm:flex-row justify-between items-center mb-8 pb-4 border-b border-gray-700">
+        <div className="text-center sm:text-left">
+          <h1 className="text-2xl sm:text-4xl font-bold tracking-wider">{getPageTitle()}</h1>
+          <p className="text-sm text-gray-400">Selamat datang kembali, {username}</p>
+        </div>
+        <div className="flex items-center gap-4 mt-4 sm:mt-0">
+          <button
               onClick={handleSettingsClick}
-              className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              className="p-2 text-gray-300 hover:text-white hover:bg-white/10 rounded-full transition-colors duration-300"
               aria-label="Pengaturan"
-              title="Pengaturan"
-            >
-              <SettingsIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white"/>
-            </button>
-            <button
-              onClick={onLogout}
-              className="py-2 px-5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-transform transform hover:scale-105"
-            >
-              Keluar
-            </button>
-          </div>
-        </header>
+          >
+              <SettingsIcon className="w-6 h-6"/>
+          </button>
+          <button
+            onClick={onLogout}
+            className="py-2 px-5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-red-500 transition-colors"
+          >
+            Keluar
+          </button>
+        </div>
+      </header>
 
-        {activePage === 'sirekap' ? (
-          <SirekapPage 
-            onBack={handleBack} 
-            customers={customers}
-            setCustomers={setCustomers}
-            financeHistory={financeHistory}
-            setFinanceHistory={setFinanceHistory}
-            onPaymentSuccess={handlePaymentNotification}
-            companyInfo={companyInfo}
-          />
-        ) : activePage === 'laporan' ? (
-          <LaporanBulananPage 
-            onBack={handleBack} 
-            financeHistory={financeHistory}
-            companyInfo={companyInfo}
-            profitSharingData={profitSharingData}
-            setFinanceHistory={setFinanceHistory}
-            setProfitSharingData={setProfitSharingData}
-            kasCadangan={kasCadangan}
-          />
-        ) : activePage === 'invoice' ? (
-          <InvoicePage
-            onBack={handleBack}
-            companyInfo={companyInfo}
-          />
-        ) : activePage === 'kasCadangan' ? (
-          <KasCadanganPage
-            onBack={handleBack}
-            kasCadangan={kasCadangan}
-            setKasCadangan={setKasCadangan}
-            saldoAkhir={saldoAkhir}
-            financeHistory={financeHistory}
-            setFinanceHistory={setFinanceHistory}
-          />
-        ) : (
-          <>
-            {/* Menu Section */}
-            <div className="mb-8 overflow-x-auto">
-              <nav>
-                <ul className="flex flex-nowrap sm:flex-wrap gap-x-4 sm:gap-x-6 gap-y-2">
-                  <li>
-                    <a 
-                      href="#" 
-                      onClick={(e) => { e.preventDefault(); setActivePage('sirekap'); }}
-                      className="text-base sm:text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 border-b-2 border-transparent hover:border-sky-400 whitespace-nowrap">
-                      Sirekap
-                    </a>
-                  </li>
-                  <li>
-                    <a 
-                      href="#" 
-                      onClick={(e) => { e.preventDefault(); setActivePage('laporan'); }}
-                      className="text-base sm:text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 border-b-2 border-transparent hover:border-sky-400 whitespace-nowrap">
-                      Laporan Bulanan
-                    </a>
-                  </li>
-                  <li>
-                    <a 
-                      href="#" 
-                      onClick={(e) => { e.preventDefault(); setActivePage('invoice'); }}
-                      className="text-base sm:text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 border-b-2 border-transparent hover:border-sky-400 whitespace-nowrap">
-                      Invoice
-                    </a>
-                  </li>
-                  <li>
-                    <a 
-                      href="#" 
-                      onClick={(e) => { e.preventDefault(); setActivePage('kasCadangan'); }}
-                      className="text-base sm:text-lg text-white font-medium hover:text-sky-300 transition-colors duration-300 pb-1 border-b-2 border-transparent hover:border-sky-400 whitespace-nowrap">
-                      Kas Cadangan
-                    </a>
-                  </li>
-                </ul>
-              </nav>
-            </div>
+      {activePage === 'dashboard' && (
+        <nav className="mb-8">
+            <ul className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <li><button onClick={() => setActivePage('sirekap')} className="nav-button bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 w-full">Sirekap</button></li>
+                <li><button onClick={() => setActivePage('laporan')} className="nav-button bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 w-full">Laporan Bulanan</button></li>
+                <li><button onClick={() => setActivePage('invoice')} className="nav-button bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 w-full">Buat Invoice</button></li>
+                <li><button onClick={() => setActivePage('kasCadangan')} className="nav-button bg-slate-500/20 hover:bg-slate-500/30 text-slate-300 w-full">Kas Cadangan</button></li>
+            </ul>
+        </nav>
+      )}
 
-            {/* Main Content Area */}
-            <main className="flex-grow flex flex-col justify-center items-center">
-              {renderFinancialVisualisation()}
-            </main>
-          </>
-        )}
-        
-      </div>
+      <main className="flex-grow flex flex-col">
+        {renderActivePage()}
+      </main>
+      <style>{`
+        .nav-button {
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            font-size: 1.125rem;
+            font-weight: 600;
+            text-align: center;
+            transition: all 0.3s ease;
+            transform: translateY(0);
+        }
+        .nav-button:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+      `}</style>
     </div>
   );
 };
