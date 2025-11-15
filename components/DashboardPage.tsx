@@ -48,8 +48,8 @@ export interface CompanyInfo {
     address: string;
     phone: string;
     logo: string | null;
-    waGatewayUrl: string;
-    waGatewayToken: string;
+    telegramBotToken: string;
+    telegramChatId: string;
     namaBank: string;
     nomorRekening: string;
     atasNama: string;
@@ -136,48 +136,91 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
     return totalPemasukan - totalPengeluaran;
   }, [financeHistory]);
 
-  const handlePaymentNotification = async (customer: { nama: string; noHp: string; }, amount: number) => {
-    if (!companyInfo.waGatewayUrl || !companyInfo.waGatewayToken) {
-      console.log("WhatsApp gateway not configured. Skipping payment confirmation notification.");
-      return;
+  // --- START NOTIFICATION LOGIC ---
+  const generateBalanceSummary = (): string => {
+    const pemasukanTunai = financeHistory.filter(e => e.kategori === 'Pemasukan' && e.metode === 'Tunai').reduce((acc, e) => acc + e.nominal, 0);
+    const pemasukanTransfer = financeHistory.filter(e => e.kategori === 'Pemasukan' && e.metode === 'Transfer').reduce((acc, e) => acc + e.nominal, 0);
+    const pengeluaranTunai = financeHistory.filter(e => e.kategori === 'Pengeluaran' && e.metode === 'Tunai').reduce((acc, e) => acc + e.nominal, 0);
+    const pengeluaranTransfer = financeHistory.filter(e => e.kategori === 'Pengeluaran' && e.metode === 'Transfer').reduce((acc, e) => acc + e.nominal, 0);
+    
+    const saldoTunai = pemasukanTunai - pengeluaranTunai;
+    const saldoTransfer = pemasukanTransfer - pengeluaranTransfer;
+
+    return `
+---
+*Saldo Saat Ini:*
+- Tunai: Rp ${saldoTunai.toLocaleString('id-ID')}
+- Transfer: Rp ${saldoTransfer.toLocaleString('id-ID')}
+*Total Saldo Akhir: Rp ${saldoAkhir.toLocaleString('id-ID')}*
+*Kas Cadangan: Rp ${kasCadangan.toLocaleString('id-ID')}*
+    `;
+  };
+
+  const sendTelegramNotification = async (message: string) => {
+    if (!companyInfo.telegramBotToken || !companyInfo.telegramChatId) {
+        console.log("Telegram bot not configured. Skipping notification.");
+        return;
     }
-
-    let formattedPhone = customer.noHp.trim();
-    if (formattedPhone.startsWith('0')) {
-        formattedPhone = '62' + formattedPhone.substring(1);
-    }
-    formattedPhone = formattedPhone.replace(/\D/g, '');
-
-    const message = `Yth. Bpk/Ibu ${customer.nama},\n\nTerima kasih. Pembayaran Anda sebesar *Rp ${amount.toLocaleString('id-ID')}* telah berhasil kami terima.\n\nSalam,\n${companyInfo.name}`;
-
+    const url = `https://api.telegram.org/bot${companyInfo.telegramBotToken}/sendMessage`;
     try {
-      // Assuming a generic API structure for the gateway
-      const response = await fetch(companyInfo.waGatewayUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          token: companyInfo.waGatewayToken,
-          to: formattedPhone,
-          body: message,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(`WhatsApp API request failed with status ${response.status}: ${errorBody}`);
-      }
-      
-      const result = await response.json();
-      console.log('WhatsApp payment confirmation sent successfully:', result);
-
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: companyInfo.telegramChatId,
+                text: message,
+                parse_mode: 'Markdown'
+            })
+        });
+        if (!response.ok) {
+            const errorBody = await response.json();
+            throw new Error(`Telegram API request failed: ${errorBody.description}`);
+        }
+        console.log('Telegram notification sent successfully.');
     } catch (error) {
-      console.error('Failed to send WhatsApp payment confirmation:', error);
-      // We don't show an error to the user to keep the UX smooth,
-      // as the primary action (payment recording) was successful.
+        console.error('Failed to send Telegram notification:', error);
     }
   };
+
+  const handleActivityNotification = (title: string, details: string) => {
+    const balanceSummary = generateBalanceSummary();
+    const message = `🔔 *${title}*\n\n${details}\n${balanceSummary}`;
+    sendTelegramNotification(message);
+  };
+  
+  const handlePaymentSuccessNotification = (customer: Customer, amount: number) => {
+    const title = 'Pembayaran Diterima';
+    const details = `Pembayaran dari *${customer.nama}* sebesar *Rp ${amount.toLocaleString('id-ID')}* telah berhasil dicatat.`;
+    handleActivityNotification(title, details);
+  };
+  
+  const handleNewCustomerNotification = (customer: Customer) => {
+    const title = 'Pelanggan Baru Ditambahkan';
+    const details = `Pelanggan baru *${customer.nama}* dengan No. HP *${customer.noHp}* dan tagihan *Rp ${Number(customer.harga).toLocaleString('id-ID')}* telah ditambahkan.`;
+    handleActivityNotification(title, details);
+  };
+  
+  const handleNewFinanceEntryNotification = (entry: FinanceEntry) => {
+    const title = 'Transaksi Baru Dicatat';
+    const verb = entry.kategori === 'Pemasukan' ? 'Pemasukan' : 'Pengeluaran';
+    const details = `${verb} baru dicatat:\n*Deskripsi:* ${entry.deskripsi}\n*Nominal:* Rp ${entry.nominal.toLocaleString('id-ID')}\n*Metode:* ${entry.metode}`;
+    handleActivityNotification(title, details);
+  };
+  
+  const handleProfitShareNotification = (details: { total: number; members: number }) => {
+    const title = 'Bagi Hasil Diproses';
+    const detailText = `Bagi hasil sebesar *Rp ${details.total.toLocaleString('id-ID')}* telah diproses dan dibagikan kepada *${details.members} anggota*.`;
+    handleActivityNotification(title, detailText);
+  };
+  
+  const handleKasCadanganNotification = (type: 'add' | 'use', amount: number) => {
+    const title = 'Update Kas Cadangan';
+    const details = type === 'add'
+        ? `Dana sebesar *Rp ${amount.toLocaleString('id-ID')}* telah *ditambahkan* ke Kas Cadangan.`
+        : `Dana sebesar *Rp ${amount.toLocaleString('id-ID')}* telah *ditarik* dari Kas Cadangan.`;
+    handleActivityNotification(title, details);
+  };
+  // --- END NOTIFICATION LOGIC ---
     
   const handleBackup = (type: 'all' | 'data') => {
     let backupData: any = {};
@@ -334,14 +377,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
             <input id="swal-account-name" class="swal2-input w-full !bg-gray-700 !border-gray-600 !text-white" value="${companyInfo.atasNama || ''}" placeholder="cth: PT. Sidompet Sejahtera">
           </div>
           
-          <h3 class="text-lg font-semibold text-sky-400 border-b border-gray-600 pb-2 pt-4">Integrasi Gateway</h3>
+          <h3 class="text-lg font-semibold text-sky-400 border-b border-gray-600 pb-2 pt-4">Integrasi Notifikasi Telegram</h3>
           <div>
-            <label for="swal-wa-url" class="block text-sm font-medium mb-1">URL Gateway WhatsApp</label>
-            <input id="swal-wa-url" type="url" class="swal2-input w-full !bg-gray-700 !border-gray-600 !text-white" value="${companyInfo.waGatewayUrl || ''}" placeholder="cth: https://api.wa-gateway.com/send">
+            <label for="swal-tg-token" class="block text-sm font-medium mb-1">Token Bot Telegram</label>
+            <input id="swal-tg-token" type="text" class="swal2-input w-full !bg-gray-700 !border-gray-600 !text-white" value="${companyInfo.telegramBotToken || ''}" placeholder="cth: 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11">
           </div>
           <div>
-            <label for="swal-wa-token" class="block text-sm font-medium mb-1">Token API Gateway</label>
-            <input id="swal-wa-token" type="text" class="swal2-input w-full !bg-gray-700 !border-gray-600 !text-white" value="${companyInfo.waGatewayToken || ''}" placeholder="Token atau Kunci API Anda">
+            <label for="swal-tg-chatid" class="block text-sm font-medium mb-1">Chat ID Telegram</label>
+            <input id="swal-tg-chatid" type="text" class="swal2-input w-full !bg-gray-700 !border-gray-600 !text-white" value="${companyInfo.telegramChatId || ''}" placeholder="ID grup atau pengguna untuk menerima notifikasi">
           </div>
 
           <h3 class="text-lg font-semibold text-sky-400 border-b border-gray-600 pb-2 pt-4">Backup & Restore</h3>
@@ -400,8 +443,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
         const name = (document.getElementById('swal-company-name') as HTMLInputElement).value;
         const address = (document.getElementById('swal-company-address') as HTMLTextAreaElement).value;
         const phone = (document.getElementById('swal-company-phone') as HTMLInputElement).value;
-        const waGatewayUrl = (document.getElementById('swal-wa-url') as HTMLInputElement).value;
-        const waGatewayToken = (document.getElementById('swal-wa-token') as HTMLInputElement).value;
+        const telegramBotToken = (document.getElementById('swal-tg-token') as HTMLInputElement).value;
+        const telegramChatId = (document.getElementById('swal-tg-chatid') as HTMLInputElement).value;
         const namaBank = (document.getElementById('swal-bank-name') as HTMLInputElement).value;
         const nomorRekening = (document.getElementById('swal-account-number') as HTMLInputElement).value;
         const atasNama = (document.getElementById('swal-account-name') as HTMLInputElement).value;
@@ -416,8 +459,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
                 name,
                 address,
                 phone,
-                waGatewayUrl,
-                waGatewayToken,
+                telegramBotToken,
+                telegramChatId,
                 namaBank,
                 nomorRekening,
                 atasNama,
@@ -430,8 +473,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
               name,
               address,
               phone,
-              waGatewayUrl,
-              waGatewayToken,
+              telegramBotToken,
+              telegramChatId,
               namaBank,
               nomorRekening,
               atasNama,
@@ -724,7 +767,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
             setCustomers={setCustomers}
             financeHistory={financeHistory}
             setFinanceHistory={setFinanceHistory}
-            onPaymentSuccess={handlePaymentNotification}
+            onPaymentSuccess={handlePaymentSuccessNotification}
+            onNewCustomer={handleNewCustomerNotification}
+            onNewFinanceEntry={handleNewFinanceEntryNotification}
             companyInfo={companyInfo}
           />
         ) : activePage === 'laporan' ? (
@@ -736,6 +781,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
             setFinanceHistory={setFinanceHistory}
             setProfitSharingData={setProfitSharingData}
             kasCadangan={kasCadangan}
+            onProfitShareProcessed={handleProfitShareNotification}
           />
         ) : activePage === 'invoice' ? (
           <InvoicePage
@@ -750,6 +796,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
             saldoAkhir={saldoAkhir}
             financeHistory={financeHistory}
             setFinanceHistory={setFinanceHistory}
+            onKasActivity={handleKasCadanganNotification}
           />
         ) : (
           <>

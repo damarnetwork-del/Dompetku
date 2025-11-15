@@ -36,9 +36,10 @@ interface LaporanBulananPageProps {
   setFinanceHistory: React.Dispatch<React.SetStateAction<FinanceEntry[]>>;
   setProfitSharingData: React.Dispatch<React.SetStateAction<ProfitShare[]>>;
   kasCadangan: number;
+  onProfitShareProcessed: (details: { total: number; members: number }) => void;
 }
 
-const LaporanBulananPage: React.FC<LaporanBulananPageProps> = ({ onBack, financeHistory, companyInfo, profitSharingData, setFinanceHistory, setProfitSharingData, kasCadangan }) => {
+const LaporanBulananPage: React.FC<LaporanBulananPageProps> = ({ onBack, financeHistory, companyInfo, profitSharingData, setFinanceHistory, setProfitSharingData, kasCadangan, onProfitShareProcessed }) => {
   const [members, setMembers] = useState<string[]>([]);
   const [newMemberName, setNewMemberName] = useState('');
 
@@ -150,6 +151,7 @@ const LaporanBulananPage: React.FC<LaporanBulananPageProps> = ({ onBack, finance
                 nominal: saldoAkhir,
             };
             setFinanceHistory(prev => [...prev, newExpenseEntry]);
+            onProfitShareProcessed({ total: saldoAkhir, members: members.length });
 
             setMembers([]);
 

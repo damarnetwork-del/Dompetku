@@ -42,12 +42,14 @@ interface SirekapPageProps {
   financeHistory: FinanceEntry[];
   setFinanceHistory: React.Dispatch<React.SetStateAction<FinanceEntry[]>>;
   onPaymentSuccess: (customer: Customer, amount: number) => void;
+  onNewCustomer: (customer: Customer) => void;
+  onNewFinanceEntry: (entry: FinanceEntry) => void;
   companyInfo: CompanyInfo;
 }
 
 
 
-const SirekapPage: React.FC<SirekapPageProps> = ({ onBack, customers, setCustomers, financeHistory, setFinanceHistory, onPaymentSuccess, companyInfo }) => {
+const SirekapPage: React.FC<SirekapPageProps> = ({ onBack, customers, setCustomers, financeHistory, setFinanceHistory, onPaymentSuccess, onNewCustomer, onNewFinanceEntry, companyInfo }) => {
   const [activeMenu, setActiveMenu] = useState('daftar'); // 'daftar', 'input', 'keuangan', or 'riwayat'
   
   // State for the new customer form
@@ -128,6 +130,7 @@ const SirekapPage: React.FC<SirekapPageProps> = ({ onBack, customers, setCustome
         tunggakan: 0,
       };
       setCustomers(prevCustomers => [...prevCustomers, newCustomer]);
+      onNewCustomer(newCustomer);
       Swal.fire({
         title: 'Berhasil!',
         text: 'Pelanggan baru berhasil ditambahkan.',
@@ -170,6 +173,7 @@ const SirekapPage: React.FC<SirekapPageProps> = ({ onBack, customers, setCustome
             nominal: Number(nominal),
         };
         setFinanceHistory(prevHistory => [...prevHistory, newFinanceEntry]);
+        onNewFinanceEntry(newFinanceEntry);
         Swal.fire('Berhasil!', 'Catatan keuangan berhasil ditambahkan.', 'success');
     }
 

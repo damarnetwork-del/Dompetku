@@ -20,6 +20,7 @@ interface KasCadanganPageProps {
   saldoAkhir: number;
   setFinanceHistory: React.Dispatch<React.SetStateAction<FinanceEntry[]>>;
   financeHistory: FinanceEntry[];
+  onKasActivity: (type: 'add' | 'use', amount: number) => void;
 }
 
 const KasCadanganPage: React.FC<KasCadanganPageProps> = ({
@@ -28,7 +29,8 @@ const KasCadanganPage: React.FC<KasCadanganPageProps> = ({
   setKasCadangan,
   saldoAkhir,
   setFinanceHistory,
-  financeHistory
+  financeHistory,
+  onKasActivity
 }) => {
   const [tambahAmount, setTambahAmount] = useState('');
   const [gunakanAmount, setGunakanAmount] = useState('');
@@ -55,6 +57,7 @@ const KasCadanganPage: React.FC<KasCadanganPageProps> = ({
     };
     setFinanceHistory(prev => [...prev, newExpenseEntry]);
     setKasCadangan(prev => prev + amount);
+    onKasActivity('add', amount);
     
     Swal.fire({ title: 'Berhasil', text: `Rp ${amount.toLocaleString('id-ID')} berhasil ditambahkan ke kas cadangan.`, icon: 'success', customClass: { popup: '!bg-gray-800 !text-white', title: '!text-white' } });
     setTambahAmount('');
@@ -82,6 +85,7 @@ const KasCadanganPage: React.FC<KasCadanganPageProps> = ({
     };
     setFinanceHistory(prev => [...prev, newIncomeEntry]);
     setKasCadangan(prev => prev - amount);
+    onKasActivity('use', amount);
     
     Swal.fire({ title: 'Berhasil', text: `Rp ${amount.toLocaleString('id-ID')} ditarik dari kas cadangan dan ditambahkan ke saldo akhir.`, icon: 'success', customClass: { popup: '!bg-gray-800 !text-white', title: '!text-white' } });
     setGunakanAmount('');
