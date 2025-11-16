@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import ArrowLeftIcon from './icons/ArrowLeftIcon';
 import WhatsappIcon from './icons/WhatsappIcon';
+import DownloadIcon from './icons/DownloadIcon';
 
 // Declare Swal to inform TypeScript about the global variable from the CDN script
 declare const Swal: any;
@@ -78,6 +79,9 @@ const SirekapPage: React.FC<SirekapPageProps> = ({ onBack, customers, setCustome
   // State for finance history filtering
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
+  const [financeSearchTerm, setFinanceSearchTerm] = useState('');
+  const [isHistoryVisible, setIsHistoryVisible] = useState(true);
+
 
   const resetCustomerForm = () => {
     setNama('');
@@ -296,6 +300,7 @@ const SirekapPage: React.FC<SirekapPageProps> = ({ onBack, customers, setCustome
             : c
         );
         setCustomers(updatedCustomers);
+        onPaymentSuccess(customer, totalTagihan);
 
         Swal.fire({
           icon: 'success',
@@ -306,9 +311,29 @@ const SirekapPage: React.FC<SirekapPageProps> = ({ onBack, customers, setCustome
               title: '!text-white',
               confirmButton: '!bg-blue-600 hover:!bg-blue-700',
            }
+        }).then(() => {
+            Swal.fire({
+                title: 'Kirim Notifikasi Lunas?',
+                text: `Kirim pemberitahuan pembayaran lunas ke ${customer.nama} melalui WhatsApp?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Kirim Notifikasi',
+                cancelButtonText: 'Jangan Kirim',
+                confirmButtonColor: '#25D366',
+                cancelButtonColor: '#6b7280',
+                customClass: {
+                    popup: '!bg-gray-800 !text-white !rounded-lg',
+                    title: '!text-white',
+                    htmlContainer: '!text-gray-300',
+                    confirmButton: '!bg-green-600 hover:!bg-green-700',
+                    cancelButton: '!bg-gray-600 hover:!bg-gray-700',
+                },
+            }).then((waResult: any) => {
+                if (waResult.isConfirmed) {
+                    handleSendPaymentConfirmationWhatsApp(customer, totalTagihan);
+                }
+            });
         });
-
-        onPaymentSuccess(customer, totalTagihan);
       }
     });
   };
@@ -394,6 +419,74 @@ ${companyInfo.name}`
     window.open(whatsappUrl, '_blank');
   };
 
+  const handleSendPaymentConfirmationWhatsApp = (customer: Customer, amountPaid: number) => {
+    let formattedPhone = customer.noHp.trim();
+    if (formattedPhone.startsWith('0')) {
+        formattedPhone = '62' + formattedPhone.substring(1);
+    }
+    formattedPhone = formattedPhone.replace(/\D/g, '');
+
+    const message = encodeURIComponent(
+`*Konfirmasi Pembayaran Lunas*
+
+Yth. Bpk/Ibu ${customer.nama},
+
+Terima kasih. Pembayaran tagihan Anda sebesar *Rp ${amountPaid.toLocaleString('id-ID')}* telah kami terima dan berhasil dicatat pada tanggal ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}.
+
+Status tagihan Anda saat ini adalah *LUNAS*.
+
+Kami sangat menghargai pembayaran tepat waktu Anda.
+
+Hormat kami,
+${companyInfo.name}`
+    );
+
+    const whatsappUrl = `https://wa.me/${formattedPhone}?text=${message}`;
+    window.open(whatsappUrl, '_blank');
+};
+
+  const handleDownloadCustomerData = () => {
+    if (customers.length === 0) {
+        Swal.fire({
+            title: 'Tidak Ada Data',
+            text: 'Tidak ada data pelanggan untuk diunduh.',
+            icon: 'info',
+            customClass: {
+                popup: '!bg-gray-800 !text-white !rounded-lg',
+                title: '!text-white',
+                confirmButton: '!bg-blue-600 hover:!bg-blue-700',
+            }
+        });
+        return;
+    }
+
+    try {
+        const jsonString = JSON.stringify(customers, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const date = new Date().toISOString().split('T')[0];
+        link.download = `data_pelanggan_${date}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error("Gagal membuat file unduhan:", error);
+        Swal.fire({
+            title: 'Gagal',
+            text: 'Terjadi kesalahan saat menyiapkan file unduhan.',
+            icon: 'error',
+            customClass: {
+                popup: '!bg-gray-800 !text-white !rounded-lg',
+                title: '!text-white',
+                confirmButton: '!bg-red-600 hover:!bg-red-700',
+            }
+        });
+    }
+  };
+
   const filteredCustomers = customers.filter(customer => {
     const matchesSearchTerm = customer.nama.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesJenisLangganan = filterJenisLangganan === 'Semua' || customer.jenisLangganan === filterJenisLangganan;
@@ -401,9 +494,6 @@ ${companyInfo.name}`
   });
   
   const filteredFinanceHistory = financeHistory.filter(entry => {
-    if (!filterStartDate && !filterEndDate) {
-        return true;
-    }
     const entryDate = new Date(entry.tanggal);
     const startDate = filterStartDate ? new Date(filterStartDate) : null;
     const endDate = filterEndDate ? new Date(filterEndDate) : null;
@@ -411,10 +501,13 @@ ${companyInfo.name}`
     if(startDate) startDate.setUTCHours(0,0,0,0);
     if(endDate) endDate.setUTCHours(23,59,59,999);
     
-    const isAfterStartDate = startDate ? entryDate >= startDate : true;
-    const isBeforeEndDate = endDate ? entryDate <= endDate : true;
-    
-    return isAfterStartDate && isBeforeEndDate;
+    const dateMatch = (!startDate || entryDate >= startDate) && (!endDate || entryDate <= endDate);
+
+    const searchMatch = !financeSearchTerm ||
+        entry.deskripsi.toLowerCase().includes(financeSearchTerm.toLowerCase()) ||
+        String(entry.nominal).includes(financeSearchTerm);
+        
+    return dateMatch && searchMatch;
   });
 
   const renderCustomerList = () => {
@@ -604,8 +697,19 @@ ${companyInfo.name}`
     return (
       <>
         {/* Filter Section */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6 p-4 bg-white/5 rounded-lg items-center">
-            <div className="flex-1 w-full">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-4 mb-6 p-4 bg-white/5 rounded-lg items-end">
+            <div className="flex-grow w-full sm:w-auto" style={{ minWidth: '200px' }}>
+                <label htmlFor="financeSearch" className="block text-sm font-medium text-gray-400 mb-1">Cari Transaksi</label>
+                <input
+                  type="text"
+                  id="financeSearch"
+                  placeholder="Cari deskripsi atau nominal..."
+                  value={financeSearchTerm}
+                  onChange={(e) => setFinanceSearchTerm(e.target.value)}
+                  className="w-full pl-4 pr-3 py-2 text-white bg-white/10 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none transition duration-300 placeholder-gray-400"
+                />
+            </div>
+            <div className="flex-grow w-full sm:w-auto">
                 <label htmlFor="filterStartDate" className="block text-sm font-medium text-gray-400 mb-1">Dari Tanggal</label>
                 <input
                   type="date"
@@ -615,7 +719,7 @@ ${companyInfo.name}`
                   className="w-full pl-4 pr-3 py-2 text-white bg-white/10 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none transition duration-300"
                 />
             </div>
-            <div className="flex-1 w-full">
+            <div className="flex-grow w-full sm:w-auto">
                 <label htmlFor="filterEndDate" className="block text-sm font-medium text-gray-400 mb-1">Sampai Tanggal</label>
                 <input
                   type="date"
@@ -625,108 +729,120 @@ ${companyInfo.name}`
                   className="w-full pl-4 pr-3 py-2 text-white bg-white/10 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none transition duration-300"
                 />
             </div>
+            <div className="w-full sm:w-auto">
+                <button
+                    onClick={() => setIsHistoryVisible(!isHistoryVisible)}
+                    className="w-full py-2 px-5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-sky-500 transition-colors"
+                >
+                    {isHistoryVisible ? 'Sembunyikan' : 'Tampilkan'}
+                </button>
+            </div>
         </div>
         
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-green-500/10 p-4 rounded-lg">
-                <p className="text-sm text-green-400 font-semibold">Total Pemasukan</p>
-                <p className="text-xl font-bold text-white">Rp {totalPemasukan.toLocaleString('id-ID')}</p>
-                <div className="mt-2 text-xs text-gray-300 space-y-1">
-                    <p>Tunai: Rp {pemasukanTunai.toLocaleString('id-ID')}</p>
-                    <p>Transfer: Rp {pemasukanTransfer.toLocaleString('id-ID')}</p>
-                </div>
-            </div>
-            <div className="bg-red-500/10 p-4 rounded-lg">
-                <p className="text-sm text-red-400 font-semibold">Total Pengeluaran</p>
-                <p className="text-xl font-bold text-white">Rp {totalPengeluaran.toLocaleString('id-ID')}</p>
-                <div className="mt-2 text-xs text-gray-300 space-y-1">
-                    <p>Tunai: Rp {pengeluaranTunai.toLocaleString('id-ID')}</p>
-                    <p>Transfer: Rp {pengeluaranTransfer.toLocaleString('id-ID')}</p>
-                </div>
-            </div>
-            <div className="bg-sky-500/10 p-4 rounded-lg">
-                <p className="text-sm text-sky-400 font-semibold">Saldo (sesuai filter)</p>
-                <p className={`text-xl font-bold ${saldoKeseluruhan >= 0 ? 'text-white' : 'text-red-400'}`}>
-                    Rp {saldoKeseluruhan.toLocaleString('id-ID')}
-                </p>
-            </div>
-        </div>
-
-        {filteredFinanceHistory.length === 0 ? (
-          <div className="text-center text-gray-400 mt-8">
-            <p>Tidak ada data transaksi yang cocok dengan filter tanggal Anda.</p>
-          </div>
-        ) : (
+        {isHistoryVisible && (
           <>
-            {/* Mobile Card View */}
-            <div className="space-y-4 md:hidden">
-              {filteredFinanceHistory.map(entry => (
-                <div key={entry.id} className="bg-white/5 p-4 rounded-lg shadow">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <p className="font-bold text-base text-white break-words">{entry.deskripsi}</p>
-                      <p className="text-xs text-gray-400">{new Date(entry.tanggal).toLocaleDateString('id-ID', { timeZone: 'UTC', day: '2-digit', month: 'long', year: 'numeric' })}</p>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-green-500/10 p-4 rounded-lg">
+                    <p className="text-sm text-green-400 font-semibold">Total Pemasukan</p>
+                    <p className="text-xl font-bold text-white">Rp {totalPemasukan.toLocaleString('id-ID')}</p>
+                    <div className="mt-2 text-xs text-gray-300 space-y-1">
+                        <p>Tunai: Rp {pemasukanTunai.toLocaleString('id-ID')}</p>
+                        <p>Transfer: Rp {pemasukanTransfer.toLocaleString('id-ID')}</p>
                     </div>
-                     <span className={`ml-2 flex-shrink-0 px-2 py-1 rounded-full text-xs font-semibold ${
-                        entry.kategori === 'Pemasukan' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                    }`}>
-                        {entry.kategori}
-                    </span>
-                  </div>
-                  <div className="mt-3 flex justify-between items-center">
-                    <p className="text-sm text-gray-300">{entry.metode}</p>
-                    <p className={`text-lg font-semibold ${entry.kategori === 'Pemasukan' ? 'text-green-400' : 'text-red-400'}`}>
-                      {entry.kategori === 'Pemasukan' ? '+' : '-'} Rp {entry.nominal.toLocaleString('id-ID')}
-                    </p>
-                  </div>
-                   <div className="mt-4 pt-3 border-t border-gray-700 flex justify-end items-center gap-4">
-                      <button onClick={() => handleStartEdit(entry)} className="font-medium text-blue-400 hover:text-blue-300 transition-colors">Edit</button>
-                      <button onClick={() => handleDeleteEntry(entry.id)} className="font-medium text-red-400 hover:text-red-300 transition-colors">Hapus</button>
-                   </div>
                 </div>
-              ))}
+                <div className="bg-red-500/10 p-4 rounded-lg">
+                    <p className="text-sm text-red-400 font-semibold">Total Pengeluaran</p>
+                    <p className="text-xl font-bold text-white">Rp {totalPengeluaran.toLocaleString('id-ID')}</p>
+                    <div className="mt-2 text-xs text-gray-300 space-y-1">
+                        <p>Tunai: Rp {pengeluaranTunai.toLocaleString('id-ID')}</p>
+                        <p>Transfer: Rp {pengeluaranTransfer.toLocaleString('id-ID')}</p>
+                    </div>
+                </div>
+                <div className="bg-sky-500/10 p-4 rounded-lg">
+                    <p className="text-sm text-sky-400 font-semibold">Saldo (sesuai filter)</p>
+                    <p className={`text-xl font-bold ${saldoKeseluruhan >= 0 ? 'text-white' : 'text-red-400'}`}>
+                        Rp {saldoKeseluruhan.toLocaleString('id-ID')}
+                    </p>
+                </div>
             </div>
 
-            {/* Desktop Table View */}
-            <div className="overflow-x-auto hidden md:block">
-              <table className="min-w-full text-sm text-left text-gray-300">
-                  <thead className="text-xs text-white uppercase bg-white/10">
-                      <tr>
-                          <th scope="col" className="px-6 py-3">Tanggal</th>
-                          <th scope="col" className="px-6 py-3">Deskripsi</th>
-                          <th scope="col" className="px-6 py-3">Kategori</th>
-                          <th scope="col" className="px-6 py-3">Metode</th>
-                          <th scope="col" className="px-6 py-3 text-right">Nominal (Rp)</th>
-                          <th scope="col" className="px-6 py-3 text-center">Aksi</th>
-                      </tr>
-                  </thead>
-                  <tbody>
-                      {filteredFinanceHistory.map((entry) => (
-                          <tr key={entry.id} className="border-b border-gray-700 hover:bg-white/5">
-                              <td className="px-6 py-4">{new Date(entry.tanggal).toLocaleDateString('id-ID', { timeZone: 'UTC', day: '2-digit', month: 'long', year: 'numeric' })}</td>
-                              <th scope="row" className="px-6 py-4 font-medium text-white whitespace-nowrap">{entry.deskripsi}</th>
-                              <td className="px-6 py-4">
-                                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                      entry.kategori === 'Pemasukan' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                                  }`}>
-                                      {entry.kategori}
-                                  </span>
-                              </td>
-                              <td className="px-6 py-4">{entry.metode}</td>
-                              <td className={`px-6 py-4 text-right font-semibold ${entry.kategori === 'Pemasukan' ? 'text-green-400' : 'text-red-400'}`}>
-                                  {entry.kategori === 'Pemasukan' ? '+' : '-'} {entry.nominal.toLocaleString('id-ID')}
-                              </td>
-                              <td className="px-6 py-4 text-center space-x-4">
-                                <button onClick={() => handleStartEdit(entry)} className="font-medium text-blue-400 hover:text-blue-300 transition-colors">Edit</button>
-                                <button onClick={() => handleDeleteEntry(entry.id)} className="font-medium text-red-400 hover:text-red-300 transition-colors">Hapus</button>
-                              </td>
+            {filteredFinanceHistory.length === 0 ? (
+              <div className="text-center text-gray-400 mt-8">
+                <p>Tidak ada data transaksi yang cocok dengan filter tanggal Anda.</p>
+              </div>
+            ) : (
+              <>
+                {/* Mobile Card View */}
+                <div className="space-y-4 md:hidden">
+                  {filteredFinanceHistory.map(entry => (
+                    <div key={entry.id} className="bg-white/5 p-4 rounded-lg shadow">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <p className="font-bold text-base text-white break-words">{entry.deskripsi}</p>
+                          <p className="text-xs text-gray-400">{new Date(entry.tanggal).toLocaleDateString('id-ID', { timeZone: 'UTC', day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                        </div>
+                         <span className={`ml-2 flex-shrink-0 px-2 py-1 rounded-full text-xs font-semibold ${
+                            entry.kategori === 'Pemasukan' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                        }`}>
+                            {entry.kategori}
+                        </span>
+                      </div>
+                      <div className="mt-3 flex justify-between items-center">
+                        <p className="text-sm text-gray-300">{entry.metode}</p>
+                        <p className={`text-lg font-semibold ${entry.kategori === 'Pemasukan' ? 'text-green-400' : 'text-red-400'}`}>
+                          {entry.kategori === 'Pemasukan' ? '+' : '-'} Rp {entry.nominal.toLocaleString('id-ID')}
+                        </p>
+                      </div>
+                       <div className="mt-4 pt-3 border-t border-gray-700 flex justify-end items-center gap-4">
+                          <button onClick={() => handleStartEdit(entry)} className="font-medium text-blue-400 hover:text-blue-300 transition-colors">Edit</button>
+                          <button onClick={() => handleDeleteEntry(entry.id)} className="font-medium text-red-400 hover:text-red-300 transition-colors">Hapus</button>
+                       </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="overflow-x-auto hidden md:block">
+                  <table className="min-w-full text-sm text-left text-gray-300">
+                      <thead className="text-xs text-white uppercase bg-white/10">
+                          <tr>
+                              <th scope="col" className="px-6 py-3">Tanggal</th>
+                              <th scope="col" className="px-6 py-3">Deskripsi</th>
+                              <th scope="col" className="px-6 py-3">Kategori</th>
+                              <th scope="col" className="px-6 py-3">Metode</th>
+                              <th scope="col" className="px-6 py-3 text-right">Nominal (Rp)</th>
+                              <th scope="col" className="px-6 py-3 text-center">Aksi</th>
                           </tr>
-                      ))}
-                  </tbody>
-              </table>
-          </div>
-        </>
+                      </thead>
+                      <tbody>
+                          {filteredFinanceHistory.map((entry) => (
+                              <tr key={entry.id} className="border-b border-gray-700 hover:bg-white/5">
+                                  <td className="px-6 py-4">{new Date(entry.tanggal).toLocaleDateString('id-ID', { timeZone: 'UTC', day: '2-digit', month: 'long', year: 'numeric' })}</td>
+                                  <th scope="row" className="px-6 py-4 font-medium text-white whitespace-nowrap">{entry.deskripsi}</th>
+                                  <td className="px-6 py-4">
+                                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                          entry.kategori === 'Pemasukan' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                                      }`}>
+                                          {entry.kategori}
+                                      </span>
+                                  </td>
+                                  <td className="px-6 py-4">{entry.metode}</td>
+                                  <td className={`px-6 py-4 text-right font-semibold ${entry.kategori === 'Pemasukan' ? 'text-green-400' : 'text-red-400'}`}>
+                                      {entry.kategori === 'Pemasukan' ? '+' : '-'} {entry.nominal.toLocaleString('id-ID')}
+                                  </td>
+                                  <td className="px-6 py-4 text-center space-x-4">
+                                    <button onClick={() => handleStartEdit(entry)} className="font-medium text-blue-400 hover:text-blue-300 transition-colors">Edit</button>
+                                    <button onClick={() => handleDeleteEntry(entry.id)} className="font-medium text-red-400 hover:text-red-300 transition-colors">Hapus</button>
+                                  </td>
+                              </tr>
+                          ))}
+                      </tbody>
+                  </table>
+              </div>
+            </>
+            )}
+          </>
         )}
       </>
     );
@@ -801,37 +917,57 @@ ${companyInfo.name}`
             <h2 className="text-2xl sm:text-3xl font-semibold mb-6 text-center">Rekap Daftar Pelanggan</h2>
             
             {/* Filter Section */}
-            <div className="flex flex-col sm:flex-row flex-wrap gap-4 mb-6 p-4 bg-white/5 rounded-lg items-center">
-              <input
-                type="text"
-                placeholder="Cari berdasarkan nama..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-grow w-full sm:w-auto pl-4 pr-3 py-2 text-white bg-white/10 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none transition duration-300 placeholder-gray-400"
-              />
-              <select
-                value={filterJenisLangganan}
-                onChange={(e) => setFilterJenisLangganan(e.target.value)}
-                className="w-full sm:w-auto pl-3 pr-8 py-2 text-white bg-gray-800/50 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none transition duration-300"
-              >
-                <option value="Semua" className="bg-gray-800">Semua Jenis</option>
-                <option value="PPPoE" className="bg-gray-800">PPPoE</option>
-                <option value="Static" className="bg-gray-800">Static</option>
-                <option value="Hotspot" className="bg-gray-800">Hotspot</option>
-                <option value="Mitra Voucher" className="bg-gray-800">Mitra Voucher</option>
-              </select>
-              <button
-                onClick={() => setIsListVisible(!isListVisible)}
-                className="w-full sm:w-auto py-2 px-5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-sky-500 transition-colors"
-              >
-                {isListVisible ? 'Sembunyikan' : 'Tampilkan'}
-              </button>
-               <button
-                  onClick={handleNewBillingCycle}
-                  className="w-full sm:w-auto py-2 px-5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-red-500 transition-colors"
+            <div className="flex flex-col sm:flex-row flex-wrap gap-4 mb-6 p-4 bg-white/5 rounded-lg items-end">
+              <div className="w-full sm:flex-grow">
+                <label htmlFor="customerSearch" className="block text-sm font-medium text-gray-400 mb-1">Cari Pelanggan</label>
+                <input
+                  id="customerSearch"
+                  type="text"
+                  placeholder="Cari berdasarkan nama..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-4 pr-3 py-2 text-white bg-white/10 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none transition duration-300 placeholder-gray-400"
+                />
+              </div>
+              <div className="w-full sm:w-auto">
+                <label htmlFor="customerFilter" className="block text-sm font-medium text-gray-400 mb-1">Jenis</label>
+                <select
+                  id="customerFilter"
+                  value={filterJenisLangganan}
+                  onChange={(e) => setFilterJenisLangganan(e.target.value)}
+                  className="w-full pl-3 pr-8 py-2 text-white bg-gray-800/50 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none transition duration-300"
                 >
-                  Siklus Tagihan Baru
+                  <option value="Semua" className="bg-gray-800">Semua Jenis</option>
+                  <option value="PPPoE" className="bg-gray-800">PPPoE</option>
+                  <option value="Static" className="bg-gray-800">Static</option>
+                  <option value="Hotspot" className="bg-gray-800">Hotspot</option>
+                  <option value="Mitra Voucher" className="bg-gray-800">Mitra Voucher</option>
+                </select>
+              </div>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => setIsListVisible(!isListVisible)}
+                  className="flex-1 sm:flex-initial py-2 px-5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-sky-500 transition-colors"
+                >
+                  {isListVisible ? 'Sembunyikan' : 'Tampilkan'}
                 </button>
+                <button
+                  onClick={handleDownloadCustomerData}
+                  className="flex-1 sm:flex-initial py-2 px-5 flex items-center justify-center gap-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-green-500 transition-colors"
+                  title="Unduh Data Pelanggan (JSON)"
+                >
+                  <DownloadIcon className="w-4 h-4" />
+                  <span>Unduh</span>
+                </button>
+              </div>
+              <div className="w-full sm:w-auto">
+                <button
+                    onClick={handleNewBillingCycle}
+                    className="w-full py-2 px-5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-red-500 transition-colors"
+                  >
+                    Siklus Tagihan Baru
+                  </button>
+              </div>
             </div>
             
             {isListVisible && (

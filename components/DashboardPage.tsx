@@ -500,6 +500,30 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
     });
   };
 
+  const handleLogoutClick = () => {
+    Swal.fire({
+      title: 'Konfirmasi Keluar',
+      text: "Anda yakin ingin keluar dari aplikasi?",
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Ya, keluar!',
+      cancelButtonText: 'Batal',
+      customClass: {
+          popup: '!bg-gray-800 !text-white !rounded-lg',
+          title: '!text-white',
+          htmlContainer: '!text-gray-300',
+          confirmButton: '!bg-red-600 hover:!bg-red-700',
+          cancelButton: '!bg-gray-600 hover:!bg-gray-700',
+      },
+    }).then((result: any) => {
+      if (result.isConfirmed) {
+        onLogout();
+      }
+    });
+  };
+
   const handleBack = () => {
     setActivePage('dashboard');
   };
@@ -752,7 +776,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, username, compa
               <SettingsIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white"/>
             </button>
             <button
-              onClick={onLogout}
+              onClick={handleLogoutClick}
               className="py-2 px-5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-transform transform hover:scale-105"
             >
               Keluar
